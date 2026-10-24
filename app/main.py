@@ -15,7 +15,7 @@ from app.waha import send_text
 log = logging.getLogger("wa-bot")
 logging.basicConfig(level=logging.INFO)
 
-app = FastAPI(title="WhatsApp Bot")
+app = FastAPI(title="Rory")
 
 
 services = Services()

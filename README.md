@@ -1,7 +1,12 @@
-# WhatsApp bot (simple)
+# Rory
 
-FastAPI webhook for [WAHA](https://waha.devlike.pro): it receives incoming messages at `POST /webhook` and replies with text.
-Drop a folder into `tools/` and the bot picks it up — see [docs/ADDING_A_TOOL.md](docs/ADDING_A_TOOL.md). Routing lives in `app/smart.py`; unmatched messages are echoed.
+*A little help, wherever you chat.*
+
+A modular, rule-based chat companion that connects messaging platforms with useful tools, everyday assistance, and games — without requiring an LLM.
+Rory is extensible and platform-independent, with pluggable tools, built-in games, and a replaceable intent engine.
+
+Today Rory talks through [WAHA](https://waha.devlike.pro) (WhatsApp): messages arrive at `POST /webhook` and replies go back as text.
+Drop a folder into `tools/` and Rory picks it up — see [docs/ADDING_A_TOOL.md](docs/ADDING_A_TOOL.md). Routing lives in `app/smart.py`; send *help* to see what's installed.
 
 ```bash
 cp .env.example .env              # set WAHA_API_KEY
@@ -11,4 +16,4 @@ python -m venv .venv && .venv/bin/pip install -r requirements.txt -r requirement
 .venv/bin/python -m pytest
 ```
 
-The full modular version (tools, intent engines, games) lives on the `modular-architecture` branch.
+The earlier full version (tools, intent engines, games) lives on the `modular-architecture` branch.
