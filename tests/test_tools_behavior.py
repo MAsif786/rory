@@ -163,7 +163,7 @@ async def test_game_ignores_unrelated_chat_via_passthrough():
     await say(bot, "play trivia")
     assert "Home" in await say(bot, "menu")                                     # menu works mid-game
     assert bot.store.get("c").session is not None
-    assert "Home" in await say(bot, "hello")                                    # unrelated chat falls through to the greeting
+    assert "Rory" in await say(bot, "hello")                                    # unrelated chat falls through to the greeting
     assert bot.store.get("c").session is not None
 
 

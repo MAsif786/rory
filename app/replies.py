@@ -2,8 +2,6 @@
 
 Format:  <emoji> *Title*  →  blank line  →  body  →  blank line  →  optional "💡" hint.
 """
-import random
-
 from app.core.registry import Registry
 from app.core.schemas import FeatureSpec
 from app.core.tool import Tool
@@ -38,18 +36,6 @@ def home_menu(registry: Registry) -> str:
         lines += ["", "🎮 *Games* — say *play <game>*:", "   " + " · ".join(f"{g.emoji} {g.title}" for g in games)]
     lines += ["", tip("*help <tool>* for details · *help all* lists every feature")]
     return "\n".join(lines)
-
-
-GREETING = [
-    "Hey hey! 👋 Good to see you.",
-    "Well well, look who showed up! 😎",
-    "Yo! 🎉 I've been bored. Let's do something!",
-    "Hello, human! 🤖 What can I do for you?",
-]
-
-
-def greeting(registry: Registry) -> str:
-    return f"{random.choice(GREETING)}\n\n{home_menu(registry)}"
 
 
 def not_understood(registry: Registry) -> str:

@@ -23,3 +23,10 @@ def make_tools(tmp_path, monkeypatch):
             (root / name / "tool.py").write_text(textwrap.dedent(src))
         return root, pkg
     return build
+
+
+@pytest.fixture(autouse=True)
+def fresh_greeting_memory():
+    """The greetings tool remembers (in memory) who it greeted recently; every test starts with a clean slate."""
+    from tools.greetings import tool as greetings
+    greetings._last.clear()

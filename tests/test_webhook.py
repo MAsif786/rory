@@ -1,7 +1,7 @@
 import pytest
 from fastapi.testclient import TestClient
 
-from app import main, replies
+from app import main
 
 client = TestClient(main.app)
 
@@ -36,9 +36,9 @@ def test_unmatched_gets_fallback_with_real_examples(sent):
     assert sent[0][2].startswith("🤔 I didn't get that.") and "💡 Try _" in sent[0][2]
 
 
-def test_greeting_leads_to_the_menu(sent):
+def test_greeting_is_just_a_greeting(sent):
     client.post("/webhook", json=event("Hello"))
-    assert sent[0][2].startswith(tuple(replies.GREETING)) and "🏠 *Home*" in sent[0][2]
+    assert "I'm Rory" in sent[0][2] and "Home" not in sent[0][2]
 
 
 def test_ignores_own_empty_and_other_events(sent):

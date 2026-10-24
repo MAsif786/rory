@@ -42,9 +42,13 @@ async def test_help_unknown(bot):
     assert "No tool or feature called *nope*" in await say(bot, "help nope")
 
 
-async def test_hi_greets_with_menu(bot):
-    out = await say(bot, "hi")
-    assert out.startswith(tuple(replies.GREETING)) and "🏠 *Home*" in out
+async def test_hi_is_a_greeting_not_the_menu(make_tools):
+    from tools.greetings.tool import tool as greetings
+    root, pkg = make_tools({})
+    reg = Registry().discover(root, pkg)
+    reg.add(greetings, "greetings")
+    out = await Bot(reg, Dispatcher(reg), decide, ContextStore()).handle("c", "hi")
+    assert "I'm Rory" in out and "Home" not in out
 
 
 async def test_menu_and_help_work_mid_game_without_ending_it(bot):

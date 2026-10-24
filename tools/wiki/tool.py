@@ -6,7 +6,7 @@ from app.wikipedia import cut, page_url, summary
 tool = Tool("wiki", title="Wikipedia", emoji="📚", description="Look anything up on Wikipedia")
 
 # a topic is the name of something: not a sentence about "me" or "you"
-TOPIC = r"(?!(?:i|me|my|you|your|we|us|our|it|this|that|there|the time|the weather)\b)[\w'.&, -]{2,60}"
+TOPIC = r"(?!(?:i|me|my|you|your|yourself|we|us|our|it|this|that|there|the time|the weather)\b)[\w'.&, -]{2,60}"
 
 
 @tool.feature(

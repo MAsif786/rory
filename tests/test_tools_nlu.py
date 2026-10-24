@@ -10,10 +10,10 @@ EXAMPLES = [(s.full_name, ex) for s in SPECS for ex in s.examples]
 NEGATIVES = [(s.full_name, n) for s in SPECS for n in s.negatives]
 
 CHATTER = [
-    "good morning", "how are you", "thanks", "ok", "lol", "tell me a story", "whether or not to go", "i am so tired today",
+    "ok", "lol", "tell me a story", "whether or not to go", "i am so tired today",
     "book a flight to dubai", "i want to book a table", "movie night at my place", "bed time", "what time to eat",
-    "let's meet at 5", "my phone number is 555-1234", "yes/no", "and/or", "i love you", "can you help me with my homework",
-    "see you tomorrow", "who are you", "what do you think", "i'll roll up my sleeves", "lets play",
+    "let's meet at 5", "my phone number is 555-1234", "yes/no", "and/or", "can you help me with my homework",
+    "see you tomorrow", "what do you think", "i'll roll up my sleeves", "lets play",
 ]
 
 

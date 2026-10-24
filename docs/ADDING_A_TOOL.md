@@ -48,7 +48,7 @@ async def on_message(ctx, state, message):
 Startup checks: placeholders have inputs, follow-ups use real inputs, each feature has an example, no two features share a phrase, a game has both a session feature and a `@tool.session` handler.
 
 ## Routing order
-`menu`/`help` (always, even mid-game) → active game → direct command (`ping`) → greeting → answer to the bot's question → intent engine (fresh match beats follow-up; clarify asks; none falls back).
+`menu`/`help` (always, even mid-game) → active game → direct command (`ping`) → answer to the bot's question → intent engine (fresh match beats follow-up; clarify asks; none falls back).
 Follow-up context and pending questions expire after 5 minutes.
 
 ## Games

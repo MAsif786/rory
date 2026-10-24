@@ -6,7 +6,6 @@ from app.core.registry import Registry
 from app.core.schemas import Context, Continue, Finish, PassThrough
 from app.intent.decision import Decision, IntentEngine, LastTurn
 
-GREETINGS = {"hi", "hello", "hey", "salam", "assalamualaikum"}
 STOP_WORDS = {"stop", "quit", "exit"}
 MENU_WORDS = {"menu", "home", "start"}
 
@@ -44,17 +43,13 @@ class Bot:
         if command == "ping":
             return "pong 🏓"
 
-        # 3. greeting
-        if word in GREETINGS:
-            return replies.greeting(self.registry)
-
-        # 4. the bot asked a question: this message is the answer
+        # 3. the bot asked a question: this message is the answer
         if chat.pending:
             p = chat.pending
             self.store.set_pending(chat_id, None)
             return await self._run(chat_id, p.feature, {**p.args, p.missing[0]: text.strip()}, ctx)
 
-        # 5. intent engine
+        # 4. intent engine
         d: Decision = self.engine(text, self.registry.specs(), chat.last_turn)
         if d.kind in ("match", "followup"):
             return await self._run(chat_id, d.feature, d.args, ctx)
