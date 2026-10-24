@@ -68,7 +68,7 @@ async def calc(ctx, expr):
 
 @tool.feature(
     "percent", description="Percentage of a number (15% of 200)",
-    phrases=["{pct}% of {n}", "{pct} percent of {n}", "{pct} per cent of {n}", "what is {pct}% of {n}", "what is {pct} percent of {n}"],
+    phrases=["{pct}% of {n}", "{pct} percent of {n}", "{pct} per cent of {n}", "what is {pct}% of {n}", "what is {pct} percent of {n}", "what's {pct}% of {n}", "what's {pct} percent of {n}"],
     examples=["15% of 200", "what is 20 percent of 50"],
     inputs={"pct": Input(type="float", required=True, pattern=NUMBER), "n": Input(type="float", required=True, pattern=NUMBER)})
 async def percent(ctx, pct, n):

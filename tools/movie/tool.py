@@ -7,7 +7,8 @@ from app.wikipedia import cut, page_url, summary
 
 tool = Tool("movie", title="Movies", emoji="🎬", description="Movie info and ratings")
 
-TITLE = r"[^\n]{1,80}"
+TITLE = (r"(?!(?:i|me|my|you|your|we|us|our|it|this|that|these|those|there|was|is|are|were|has|have|had|what|who|how|why|when|where|which)\b)"
+         r"[^\n]{1,80}(?<!\ba)(?<!\ban)(?<!\bthe)(?<!\bis)(?<!\bwas)(?<!\bare)(?<!\bwere)(?<!\bto)(?<!\bof)(?<!\band)(?<!\bor)")
 
 
 @tool.feature(

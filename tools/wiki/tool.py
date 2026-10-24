@@ -12,7 +12,7 @@ TOPIC = r"(?!(?:i|me|my|you|your|yourself|we|us|our|it|this|that|there|the time|
 @tool.feature(
     "lookup", repeat="reuse", description="Wikipedia summary of a topic (who is Einstein, tell me about volcanoes)",
     phrases=["who is {topic}", "who was {topic}", "who are {topic}", "what is {topic}", "what is a {topic}", "what is an {topic}",
-             "what are {topic}", "what was {topic}", "tell me about {topic}", "tell me more about {topic}", "explain {topic}",
+             "what are {topic}", "what was {topic}", "tell me about {topic}", "tell me more about {topic}", "tell me something about {topic}", "tell me anything about {topic}", "explain {topic}",
              "define {topic}", "meaning of {topic}", "history of {topic}", "information on {topic}", "information about {topic}",
              "look up {topic}", "learn about {topic}", "describe {topic}", "wiki {topic}", "wikipedia {topic}"],
     keywords=["wikipedia", "wiki"],

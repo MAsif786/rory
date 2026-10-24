@@ -33,7 +33,8 @@ def convert_units(value: float, a: str, b: str) -> str | None:
 @tool.feature(
     "convert", description="Convert between units (5 km to miles, 20 c to f)",
     phrases=["{value} {src} to {dst}", "{value} {src} in {dst}", "convert {value} {src} to {dst}", "how many {dst} in {value} {src}",
-             "{value}{src} to {dst}", "{value}{src} in {dst}"],
+             "{value}{src} to {dst}", "{value}{src} in {dst}", "what's {value} {src} in {dst}", "what is {value} {src} in {dst}",
+             "how many {dst} are in {value} {src}", "how many {dst} is {value} {src}", "how many {dst} in a {src}"],
     examples=["5 km in miles", "convert 20 celsius to fahrenheit"],
     inputs={"value": Input(type="float", required=True, pattern=NUMBER), "src": Input(required=True, pattern=_UNIT),
             "dst": Input(required=True, pattern=_UNIT)})

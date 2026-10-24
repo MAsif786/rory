@@ -57,7 +57,8 @@ async def hello(ctx):
 @tool.feature(
     "salam", description="Islamic greeting",
     phrases=["salam", "salaam", "assalamualaikum", "assalamu alaikum", "assalam o alaikum", "assalam alaikum", "as salamu alaykum",
-             "as salam alaykum", "aoa", "slm", "peace be upon you"],
+             "as salam alaykum", "aoa", "slm", "peace be upon you", "salaam alaikum", "salam alaikum", "salam alaykum", "assalam u alaikum",
+             "assalamu alaikum wa rahmatullah", "assalam o alaikum wa rahmatullah"],
     examples=["assalamualaikum", "salam"])
 async def salam(ctx):
     seen = _recall(ctx.chat_id, "salam")
@@ -87,7 +88,7 @@ async def part_greeting(ctx, part):
 @tool.feature(
     "thanks", description="Say thanks",
     phrases=["thanks", "thank you", "thx", "ty", "thanks a lot", "thank you so much", "many thanks", "thanks rory", "thank you rory",
-             "shukriya", "jazakallah", "jazak allah", "jazakallah khair", "jazak allah khair"],
+             "thank u", "thanks u", "thanks so much", "thank you very much", "thanks a ton", "thx u", "shukriya", "jazakallah", "jazak allah", "jazakallah khair", "jazak allah khair"],
     examples=["thanks", "thank you so much"])
 async def thanks(ctx):
     return random.choice(["😊 Anytime! Ask me anything else.", "You're welcome! 🙌", "Happy to help! 😄"])
@@ -105,7 +106,8 @@ async def how_are_you(ctx):
 @tool.feature(
     "who_are_you", description="Ask who I am",
     phrases=["who are you", "what are you", "your name", "what is your name", "what's your name", "whats your name",
-             "are you a bot", "are you real", "are you human", "tell me about yourself", "introduce yourself"],
+             "are you a bot", "are you real", "are you human", "tell me about yourself", "introduce yourself", "what can you do",
+             "what do you do", "what can you help with", "how can you help me"],
     examples=["who are you", "what's your name"])
 async def who_are_you(ctx):
     return ("🤖 I'm *Rory* — a little help, wherever you chat. No AI guesswork, just real tools: weather, conversions, "

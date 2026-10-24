@@ -19,7 +19,7 @@ async def flip(ctx):
 
 @tool.feature(
     "roll", description="Roll dice (default one 6-sided die; try 2d6 or d20)",
-    phrases=["roll {dice}", "roll a dice", "roll a die", "roll the dice", "roll dice", "throw a dice", "throw the dice", "dice", "die"],
+    phrases=["roll {dice}", "roll a dice", "roll a die", "roll the dice", "roll dice", "throw a dice", "throw the dice", "throw dice", "throw a die", "dice", "die"],
     examples=["roll a dice", "roll 2d6"],
     negatives=["roll call", "roll back", "roll out", "rock and roll"],
     inputs={"dice": Input(pattern=r"\d{0,2}d\d{1,3}")})

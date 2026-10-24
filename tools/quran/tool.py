@@ -21,7 +21,7 @@ LANG_IN = Input(default="en", pattern=LANG)
 
 @tool.feature(
     "verse", repeat="reuse", description="A verse or range, optionally in another language (2:255, 2:255-257, 2:255 in urdu)",
-    phrases=["{ref}", "quran {ref}", "ayah {ref}", "ayat {ref}", "verse {ref}", "surah {ref}", "{ref} in {lang}", "quran {ref} in {lang}",
+    phrases=["{ref}", "quran {ref}", "read quran {ref}", "read {ref}", "ayah {ref}", "ayat {ref}", "verse {ref}", "surah {ref}", "{ref} in {lang}", "quran {ref} in {lang}",
              "quran {ref} {lang}", "{ref} {lang}", "ayah {ref} in {lang}", "verse {ref} in {lang}"],
     examples=["2:255", "quran 112:1-4 in urdu"],
     inputs={"ref": Input(required=True, pattern=REF), "lang": LANG_IN})
@@ -121,6 +121,7 @@ async def surah_audio(ctx, name):
 
 @tool.feature(
     "tafsir", repeat="reuse", description="Arabic tafsir of a verse (muyassar; also jalalayn, qurtubi, waseet, baghawi)",
+    keywords=["tafsir", "tafseer"],
     phrases=["tafsir {ref}", "tafseer {ref}", "quran tafsir {ref}", "tafsir of {ref}", "tafsir {ref} {book}", "tafsir of {ref} by {book}",
              "explain verse {ref}"],
     examples=["tafsir 2:255", "tafsir 1:1 jalalayn"],
