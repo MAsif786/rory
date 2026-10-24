@@ -13,8 +13,11 @@ cp .env.example .env              # set WAHA_API_KEY
 docker compose up -d              # WAHA on :3000 (webhook already points at the bot) — scan the QR code
 python -m venv .venv && .venv/bin/pip install -r requirements.txt -r requirements-dev.txt
 .venv/bin/uvicorn app.main:app --port 8000 --reload   # restarts on code changes
-.venv/bin/python -m pytest
+.venv/bin/python -m pytest                      # offline, ~12 s
+.venv/bin/python scripts/quality_report.py     # how well does Rory understand, and what to improve next
 ```
+
+Testing is described in [docs/TEST_PLAN.md](docs/TEST_PLAN.md) (intent corpus, follow-ups, conversations, failure matrix, live API checks).
 
 ## What Rory can do
 
