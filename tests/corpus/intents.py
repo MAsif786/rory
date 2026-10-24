@@ -97,6 +97,7 @@ GAPS = [
     ("bitcoin price", "search.web", "price/real-time queries have no tool (crypto/stocks tool)"),
     ("lahore ka mausam kaisa hai aaj", "weather.current", "Roman Urdu with a trailing time word"),
     ("kal ka mausam lahore", "weather.forecast", "Roman Urdu 'kal' (tomorrow)"),
+    ("did you know something about moon", "fun.fact", "real user message (from the log): 'did you know something about <topic>' wants a topical fact; a generic fact is the minimum"),
 ]
 
 # --- argument extraction: the feature AND what was captured (case of names/URLs must survive) ---------------------------------

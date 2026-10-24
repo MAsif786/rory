@@ -195,15 +195,53 @@ def pytest_section(live: bool):
 
 
 # --- 6. mine the running bot's log ------------------------------------------------------------------------------------------------
+def read_log(path: str) -> list[dict]:
+    """Log lines as dicts: JSON lines are parsed, plain-text lines are wrapped as {"msg": line}."""
+    records = []
+    for line in Path(path).read_text(errors="replace").splitlines():
+        line = line.strip()
+        if line.startswith("{"):
+            try:
+                records.append(json.loads(line))
+                continue
+            except ValueError:
+                pass
+        if line:
+            records.append({"msg": line})
+    return records
+
+
 def log_section(path: str):
     heading(f"6. What real users hit (from {path})")
-    text = Path(path).read_text(errors="replace") if Path(path).exists() else ""
-    if not text:
+    records = read_log(path) if Path(path).exists() else []
+    if not records:
         print("  (log is empty or missing)")
         return
-    misses = Counter(m.group(1) for m in re.finditer(r"unmatched: (['\"].*?['\"])$", text, re.M))
-    errors = Counter(m.group(1) for m in re.finditer(r"tool handler failed: (\S+)", text))
-    upstream = Counter(m.group(1) for m in re.finditer(r"upstream problem in (\S+)", text))
+    handled = [r for r in records if r.get("msg") == "handled"]
+    if handled:
+        outcomes = Counter(r.get("outcome") for r in handled)
+        print(f"  {len(handled)} messages handled: " + ", ".join(f"{o} {n}" for o, n in outcomes.most_common()))
+        by_feature = defaultdict(list)
+        for r in handled:
+            if r.get("feature") and r.get("ms") is not None:
+                by_feature[r["feature"]].append(r["ms"])
+        slow = sorted(((sorted(v)[int(len(v) * 0.95)], f, len(v)) for f, v in by_feature.items()), reverse=True)[:5]
+        print("  slowest features (p95 ms, calls): " + ", ".join(f"{f} {ms}ms ({n})" for ms, f, n in slow))
+        for ms, f, n in slow:
+            if ms > 5000:
+                improve(f"{f} is slow for real users: p95 {ms} ms over {n} calls (cache it or add a faster source)")
+        failed = outcomes.get("failed", 0)
+        gate("no failed messages in the log", failed == 0, f"{failed} failed" if failed else "")
+        limited = outcomes.get("rate_limited", 0) + outcomes.get("rate_limited_silent", 0)
+        if limited:
+            improve(f"{limited} messages were rate limited: check for a looping sender or raise RATE_LIMIT_MAX")
+    texts = [r["msg"] for r in records]
+    misses = Counter()
+    for t in texts:
+        if m := re.match(r"unmatched: (['\"].*['\"])$", t):
+            misses[m.group(1)] += 1
+    errors = Counter(m.group(1) for t in texts if (m := re.match(r"tool handler failed: (\S+)", t)))
+    upstream = Counter(m.group(1) for t in texts if (m := re.match(r"upstream problem in (\S+?):", t)))
     print(f"  messages nothing understood: {sum(misses.values())} ({len(misses)} distinct)")
     examples = {ex.lower(): s.full_name for s in SPECS for ex in s.examples}
     for raw, n in misses.most_common(15):

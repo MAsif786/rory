@@ -6,17 +6,23 @@ each step is proven done with the existing test machinery (`docs/TEST_PLAN.md`).
 
 Guiding rules (unchanged): **no LLM required**, drop-a-folder tools, core never edited to add a tool, every feature measurable.
 
-## Phase 0 - Make it safe for real customers (do first, ~1 week)
+## Phase 0 - Make it safe for real customers - DONE
 
 | # | Work | Why | Done when |
 |---|---|---|---|
-| 0.1 | **Acknowledge the webhook immediately, reply in the background** (`BackgroundTasks` / queue) | WAHA waits for our answer; a slow tool (up to 15 s) can trigger a retry and a duplicate reply | webhook returns < 100 ms regardless of tool speed; test with a slow fake tool |
-| 0.2 | **De-duplicate inbound messages** by WAHA message id (short TTL set) | retries and double webhooks happen | same payload twice -> one reply |
-| 0.3 | **Per-user rate limit** (e.g. 12 msgs / 30 s, polite "slow down" reply) | spam, loops between two bots, quota protection | scenario test: 13th message in 30 s gets the limit notice, tools not called |
-| 0.4 | **Evict idle chats** from `ContextStore` (and cap size) | memory grows with every chat ever seen | store stays bounded in a 10k-chat fuzz test |
-| 0.5 | **Never reply to ourselves / groups opt-in**: ignore `fromMe`, optionally require a mention or prefix in groups | groups would otherwise be flooded | group fixture: only addressed messages answered |
-| 0.6 | Config & secrets via one `Settings` object (pydantic-settings), `.env` validated at startup | misconfiguration today fails at first use | startup fails fast with a clear message |
-| 0.7 | Structured logs (JSON) with chat hash, feature, latency, outcome | needed for every later phase; feeds `quality_report.py --log` | one log line per message with feature + ms |
+| 0.1 ✅ | **Acknowledge the webhook immediately, reply in the background** (`BackgroundTasks` / queue) | WAHA waits for our answer; a slow tool (up to 15 s) can trigger a retry and a duplicate reply | webhook returns < 100 ms regardless of tool speed; test with a slow fake tool |
+| 0.2 ✅ | **De-duplicate inbound messages** by WAHA message id (short TTL set) | retries and double webhooks happen | same payload twice -> one reply |
+| 0.3 ✅ | **Per-user rate limit** (e.g. 12 msgs / 30 s, polite "slow down" reply) | spam, loops between two bots, quota protection | scenario test: 13th message in 30 s gets the limit notice, tools not called |
+| 0.4 ✅ | **Evict idle chats** from `ContextStore` (and cap size) | memory grows with every chat ever seen | store stays bounded in a 10k-chat fuzz test |
+| 0.5 ✅ | **Never reply to ourselves / groups opt-in**: ignore `fromMe`, optionally require a mention or prefix in groups | groups would otherwise be flooded | group fixture: only addressed messages answered |
+| 0.6 ✅ | Config & secrets via one `Settings` object (pydantic-settings), `.env` validated at startup | misconfiguration today fails at first use | startup fails fast with a clear message |
+| 0.7 ✅ | Structured logs (JSON) with chat hash, feature, latency, outcome | needed for every later phase; feeds `quality_report.py --log` | one log line per message with feature + ms |
+
+Delivered in `app/main.py` (+ `settings.py`, `guards.py`, `groups.py`, `logsetup.py`, `trace.py`); proven by `tests/test_phase0.py` (43 checks).
+Notes from the build: messages of one chat are processed strictly in order (per-chat lock) while chats run in parallel; the first message over
+the rate limit gets one notice, the rest are dropped silently; in a group, an active game or open question keeps listening without
+mentions; logs carry a hash of the chat id, never the phone number. Run uvicorn with `--reload-dir app --reload-dir tools` (the default
+watcher also scans `.venv` and burns CPU). `/ready` and Prometheus metrics move to Phase 1.
 
 ## Phase 1 - Durable state and scaling (~1-2 weeks)
 

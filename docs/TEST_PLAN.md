@@ -22,6 +22,7 @@ and where answers could be smarter. Everything here is executable.
 | 6 | **Conversations** | `tests/test_scenarios.py` + `tests/scenarios/` | multi-turn flows: follow-ups, clarifications, repeats, greetings, help, unknown words, games, expiry, outages |
 | 7 | **Failure matrix** | `tests/test_tool_failures.py` | every tool x {connection refused, timeout, hung upstream, HTTP 500, 404, wrong JSON shape, empty result}: friendly message, no leak, recovers on the next message |
 | 8 | **Reply quality** | `tests/test_reply_quality.py` | every example answer is clean (no `None`, HTML, unfilled `{x}`, stray blank lines), short enough to read on a phone, opens with an emoji headline, humanised numbers; every help/menu page is clean |
+| 9a | **Customer safety (Phase 0)** | `tests/test_phase0.py` | non-blocking webhook, duplicate/retried webhooks, rate limits, bounded chat memory, group etiquette, settings validation, per-chat ordering, structured logs with no phone numbers |
 | 9 | **Robustness** | `tests/test_robustness.py` | odd/hostile messages (empty, NUL, 3 000 chars, emoji walls, injection strings), 300 seeded random messages, chats stay isolated |
 | 10 | **Live smoke** (`-m live`) | `tests/test_live_tools.py` | real API changed/down/slow (> 8 s), answers not about what was asked, follow-ups and link/news flows against the real world |
 | 11 | **Report** | `scripts/quality_report.py` | all of the above as numbers, plus the improvement list and the **log miner** (`--log`) |
