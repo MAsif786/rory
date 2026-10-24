@@ -90,8 +90,12 @@ async def test_small_talk_is_acknowledged_not_rejected(fb_bot, text):
     assert "didn't get that" not in out and "help" in out
 
 
-async def test_typo_gets_a_did_you_mean(fb_bot):
-    assert "Did you mean _weather in lahore_?" in await respond(fb_bot, "wether in lahore")
+async def test_small_typo_is_repaired_and_answered(fb_bot):
+    assert await respond(fb_bot, "wether in lahore") == "lahore today"
+
+
+async def test_bigger_typo_gets_a_did_you_mean(fb_bot):
+    assert "Did you mean _weather in lahore_?" in await respond(fb_bot, "wtr in lahore")
 
 
 async def test_short_unknown_word_offers_a_wikipedia_lookup(fb_bot):
