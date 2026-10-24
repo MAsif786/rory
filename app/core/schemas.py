@@ -1,21 +1,26 @@
 """Plain data shapes shared by tools, the registry, the dispatcher and the intent engines."""
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any, Callable, Literal
 
+from pydantic import BaseModel, ConfigDict, Field
 
-@dataclass(frozen=True)
-class Input:
+
+class Schema(BaseModel):
+    """Base for declarative metadata: immutable, and typos in field names fail loudly."""
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+
+class Input(Schema):
     type: Literal["text", "int", "float"] = "text"
     required: bool = False
     default: Any = None
     choices: tuple | None = None
 
 
-@dataclass(frozen=True)
-class Followup:
+class Followup(Schema):
     phrases: list[str]
-    overrides: list[str] = field(default_factory=list)   # args taken from the phrase's {placeholders}
-    sets: dict[str, Any] = field(default_factory=dict)   # args forced to a fixed value
+    overrides: list[str] = []          # args taken from the phrase's {placeholders}
+    sets: dict[str, Any] = {}          # args forced to a fixed value
 
 
 # --- what a game handler returns -------------------------------------------------------------
@@ -41,8 +46,7 @@ class PassThrough:
 
 
 # --- metadata only: this is all an intent engine ever sees -----------------------------------
-@dataclass(frozen=True)
-class FeatureSpec:
+class FeatureSpec(Schema):
     tool: str
     name: str                      # short name, e.g. "current"
     description: str = ""
@@ -51,7 +55,7 @@ class FeatureSpec:
     keywords: tuple[str, ...] = ()
     examples: tuple[str, ...] = ()
     negatives: tuple[str, ...] = ()
-    inputs: dict[str, Input] = field(default_factory=dict)
+    inputs: dict[str, Input] = Field(default_factory=dict)
     followups: tuple[Followup, ...] = ()
 
     @property

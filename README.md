@@ -7,7 +7,7 @@ Drop a folder into `tools/` and the bot picks it up — see [docs/ADDING_A_TOOL.
 cp .env.example .env              # set WAHA_API_KEY
 docker compose up -d              # WAHA on :3000 (webhook already points at the bot) — scan the QR code
 python -m venv .venv && .venv/bin/pip install -r requirements.txt -r requirements-dev.txt
-.venv/bin/uvicorn app.main:app --port 8000
+.venv/bin/uvicorn app.main:app --port 8000 --reload   # restarts on code changes
 .venv/bin/python -m pytest
 ```
 

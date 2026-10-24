@@ -71,7 +71,7 @@ async def test_active_game_beats_commands_and_nlu(bot):
 
 async def test_passthrough_falls_to_next_step(bot):
     await say(bot, "play countdown")
-    assert "Hello" in await say(bot, "hello")
+    assert "🏠 *Home*" in await say(bot, "hello")           # greeting + menu, not the game's reply
     assert await say(bot, "ping") == "2"                     # game still active
 
 

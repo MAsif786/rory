@@ -7,6 +7,7 @@ from app.core.context import ContextStore
 from app.core.dispatcher import Dispatcher
 from app.core.registry import Registry
 from app.core.services import Services
+from app import replies
 from app.intent.rule_based import decide
 from app.smart import Bot
 from app.waha import send_text
@@ -23,7 +24,7 @@ bot = Bot(registry, Dispatcher(registry), decide, ContextStore(), services)
 
 
 async def reply_for(chat_id: str, text: str) -> str:
-    return await bot.handle(chat_id, text) or f"You said: {text.strip()}"      # fallback
+    return await bot.handle(chat_id, text) or replies.not_understood(registry)
 
 
 @app.post("/webhook")

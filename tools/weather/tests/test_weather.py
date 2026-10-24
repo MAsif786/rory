@@ -90,3 +90,9 @@ async def test_upstream_failure_is_generic():
 async def test_no_false_positives(bot):
     for text in ["whether or not to go", "good morning", "tell me a joke"]:
         assert await bot.handle("c", text) is None
+
+
+async def test_api_shape_change_fails_safely(bot, monkeypatch):
+    monkeypatch.setitem(API, "current", {"weather_code": "oops"})
+    out = await bot.handle("c", "weather in lahore")
+    assert "Something went wrong" in out

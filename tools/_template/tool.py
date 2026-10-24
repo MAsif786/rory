@@ -2,7 +2,7 @@
 from app.core.schemas import Followup, Input
 from app.core.tool import Tool
 
-tool = Tool("template")          # must equal the folder name
+tool = Tool("template", title="Template", emoji="🧩", description="What this tool does")   # name must equal the folder name
 
 
 @tool.feature(

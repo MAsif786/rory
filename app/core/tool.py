@@ -12,8 +12,9 @@ class Feature:
 
 
 class Tool:
-    def __init__(self, name: str) -> None:
+    def __init__(self, name: str, *, title: str = "", emoji: str = "🧩", description: str = "") -> None:
         self.name = name
+        self.title, self.emoji, self.description = title or name.replace("_", " ").title(), emoji, description      # shown in help/menu
         self.features: dict[str, Feature] = {}
         self.session_handler: Handler | None = None
 
@@ -22,8 +23,9 @@ class Tool:
                 negatives: list[str] = (), inputs: dict[str, Input] | None = None,
                 followups: list[Followup] = ()) -> Callable[[Handler], Handler]:
         def register(fn: Handler) -> Handler:
-            spec = FeatureSpec(self.name, name, description, kind, tuple(phrases), tuple(keywords),
-                               tuple(examples), tuple(negatives), dict(inputs or {}), tuple(followups))
+            spec = FeatureSpec(tool=self.name, name=name, description=description, kind=kind, phrases=tuple(phrases),
+                               keywords=tuple(keywords), examples=tuple(examples), negatives=tuple(negatives),
+                               inputs=dict(inputs or {}), followups=tuple(followups))
             self.features[name] = Feature(spec, fn)
             return fn
         return register

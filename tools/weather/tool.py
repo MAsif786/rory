@@ -5,8 +5,9 @@ from app.core.schemas import Followup, Input
 from app.core.tool import Tool
 
 from . import service
+from .schemas import Day
 
-tool = Tool("weather")
+tool = Tool("weather", title="Weather", emoji="🌦️", description="Current weather and forecasts")
 
 WMO = {
     0: ("Clear sky", "☀️"), 1: ("Mainly clear", "🌤️"), 2: ("Partly cloudy", "⛅"), 3: ("Overcast", "☁️"),
@@ -25,14 +26,8 @@ def wmo(code: int) -> tuple[str, str]:
     return WMO.get(code, ("Unknown", "🌡️"))
 
 
-def _days(daily: dict):
-    """Open-Meteo returns columns per field; yield one dict per day."""
-    for row in zip(*daily.values()):
-        yield dict(zip(daily, row))
-
-
-def _range(day: dict) -> str:
-    return f"{day['temperature_2m_min']:.0f}–{day['temperature_2m_max']:.0f}°C"
+def _range(day: Day) -> str:
+    return f"{day.temperature_2m_min:.0f}–{day.temperature_2m_max:.0f}°C"
 
 
 @tool.feature(
@@ -46,14 +41,14 @@ def _range(day: dict) -> str:
     inputs=PLACE, followups=SWITCH_PLACE)
 async def current(ctx, place):
     r = await service.fetch(ctx.services.http, place, 3)
-    c = r.data["current"]
-    desc, icon = wmo(c["weather_code"])
+    c = r.data.current
+    desc, icon = wmo(c.weather_code)
     lines = [f"{icon} {r.title}",
-             f"{desc} · 🌡️ {c['temperature_2m']:.0f}°C (feels {c['apparent_temperature']:.0f}°C)",
-             f"💧 {c['relative_humidity_2m']}% · 💨 {c['wind_speed_10m']:.0f} km/h", ""]
-    for day in _days(r.data["daily"]):
-        when = datetime.fromisoformat(day["time"]).strftime("%a")
-        lines.append(f"{wmo(day['weather_code'])[1]} {when}: {_range(day)}")
+             f"{desc} · 🌡️ {c.temperature_2m:.0f}°C (feels {c.apparent_temperature:.0f}°C)",
+             f"💧 {c.relative_humidity_2m}% · 💨 {c.wind_speed_10m:.0f} km/h", ""]
+    for day in r.data.daily.days:
+        when = datetime.fromisoformat(day.time).strftime("%a")
+        lines.append(f"{wmo(day.weather_code)[1]} {when}: {_range(day)}")
     return "\n".join(lines)
 
 
@@ -69,8 +64,8 @@ async def current(ctx, place):
 async def forecast(ctx, place):
     r = await service.fetch(ctx.services.http, place, 5)
     lines = [f"📅 5-day forecast — {r.title}", ""]
-    for day in _days(r.data["daily"]):
-        desc, icon = wmo(day["weather_code"])
-        when = datetime.fromisoformat(day["time"]).strftime("%a %d")
-        lines.append(f"{icon} *{when}* {_range(day)} · {desc} · ☔ {day['precipitation_probability_max'] or 0}%")
+    for day in r.data.daily.days:
+        desc, icon = wmo(day.weather_code)
+        when = datetime.fromisoformat(day.time).strftime("%a %d")
+        lines.append(f"{icon} *{when}* {_range(day)} · {desc} · ☔ {day.precipitation_probability_max or 0}%")
     return "\n".join(lines)

@@ -26,7 +26,7 @@ def test_discovers_tools_and_ignores_underscore_folders(make_tools):
     ("from app.core.tool import Tool\ntool = Tool('bad')\n@tool.feature('a', phrases=['hi'])\nasync def a(ctx): ...", "example"),
     ("from app.core.tool import Tool\ntool = Tool('bad')\n@tool.feature('a', phrases=['hi'], examples=['hi'])\ndef a(ctx): ...", "async def"),
     ("from app.core.tool import Tool\ntool = Tool('bad')\n@tool.feature('a', phrases=['hi'], examples=['hi'], kind='session')\nasync def a(ctx): ...", "session"),
-    ("from app.core.tool import Tool\nfrom app.core.schemas import Followup\ntool = Tool('bad')\n@tool.feature('a', phrases=['hi'], examples=['hi'], followups=[Followup(['x'], overrides=['q'])])\nasync def a(ctx): ...", "unknown input"),
+    ("from app.core.tool import Tool\nfrom app.core.schemas import Followup\ntool = Tool('bad')\n@tool.feature('a', phrases=['hi'], examples=['hi'], followups=[Followup(phrases=['x'], overrides=['q'])])\nasync def a(ctx): ...", "unknown input"),
 ])
 def test_bad_tool_rejected_others_still_load(make_tools, src, why):
     reg = load(make_tools, bad=src, weather=ft.WEATHER)
