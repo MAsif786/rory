@@ -124,6 +124,32 @@ async def bye(ctx):
     return random.choice(["👋 Bye! Come back any time.", "See you soon! 👋", "Take care! 🌟"])
 
 
+POSITIVE = {"good", "fine", "great", "well", "ok", "okay", "alright", "happy", "excited", "awesome", "amazing", "blessed", "better"}
+MOOD_REPLIES = {
+    "positive": ["Glad to hear it! 😊 What can I do for you?", "Nice! 😄 Anything I can help with today?", "Great to hear! 🙌 Ask me anything."],
+    "tired": ["Sounds like you could use some rest 😴 I'm here if you need something quick first."],
+    "low": ["Sorry you're feeling that way 💙 Want a distraction? Try *tell me a joke* or *play hangman*."],
+    "bored": ["Let's fix that! 🎮 Try *play hangman*, *tell me a joke* or *flip a coin* — or send *games*."],
+    "sick": ["Get well soon! 🤒 Rest up and drink plenty of water."],
+    "hungry": ["🍕 I can't cook, but I can decide for you: try *choose between pizza or sushi*."],
+    "busy": ["No rush 🙂 I'm here whenever you need me."],
+}
+MOOD_GROUP = {**{m: "positive" for m in POSITIVE}, "tired": "tired", "sleepy": "tired", "sad": "low", "lonely": "low", "stressed": "low",
+              "angry": "low", "nervous": "low", "bored": "bored", "sick": "sick", "hungry": "hungry", "busy": "busy"}
+_MOOD = "|".join(sorted(MOOD_GROUP, key=len, reverse=True))
+
+
+@tool.feature(
+    "mood", description="Tell me how you feel (I'm good, I'm tired...)",
+    phrases=["i'm {mood}", "im {mood}", "i am {mood}", "i feel {mood}", "i'm feeling {mood}", "feeling {mood}", "i'm {mood} today",
+             "i am doing {mood}", "doing {mood}", "all good", "not bad", "fine thanks", "good thanks", "alhamdulillah", "alhamdulillah good",
+             "i'm doing great", "i'm doing well", "i'm doing good"],
+    examples=["I'm good", "i'm tired"],
+    inputs={"mood": Input(default="good", pattern=_MOOD)})
+async def mood(ctx, mood):
+    return random.choice(MOOD_REPLIES[MOOD_GROUP.get(mood.lower(), "positive")])
+
+
 @tool.feature(
     "praise", description="Say something nice",
     phrases=["i love you", "love you", "you are great", "you are awesome", "you are smart", "you are the best", "you're great",

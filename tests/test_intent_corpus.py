@@ -9,7 +9,7 @@ from tests.helpers import real_registry
 
 SPECS = real_registry().specs()
 FEATURES = {s.full_name for s in SPECS}
-POSITIVE = [*C.PLAIN, *C.NOISY, *C.WRAPPED, *C.PROMOTED]
+POSITIVE = [*C.PLAIN, *C.NOISY, *C.WRAPPED, *C.PROMOTED, *C.REAL]
 ACCURACY_GATE = 0.97
 
 

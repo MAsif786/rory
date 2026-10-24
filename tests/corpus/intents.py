@@ -6,6 +6,8 @@ suite stays green and the backlog stays visible; when a gap gets fixed its test 
 
 # --- plain: the canonical way to ask for each feature -----------------------------------------------------------------
 PLAIN = [
+    ("i'm good", "greetings.mood"), ("i am tired", "greetings.mood"), ("all good", "greetings.mood"),
+    ("did you know something about the moon", "fun.fact_about"), ("fun fact about octopuses", "fun.fact_about"), ("tell about moon", "wiki.lookup"),
     ("weather in lahore", "weather.current"), ("what's the weather in karachi", "weather.current"), ("is it raining in london", "weather.current"),
     ("temperature in dubai", "weather.current"), ("forecast for tokyo", "weather.forecast"), ("weather next week in paris", "weather.forecast"),
     ("will it rain in murree", "weather.forecast"), ("100 usd to pkr", "currency.convert"), ("convert 50 euros to dollars", "currency.convert"),
@@ -64,6 +66,11 @@ PROMOTED = [   # were gaps; fixed by input canonicalisation (typo repair, de-elo
     ("aaj ka mausam", "weather.current"), ("mujhe khabrein batao", "news.headlines"), ("what are the headlines", "news.headlines"),
 ]
 
+REAL = [   # taken from the live chat log
+    ("I'm good", "greetings.mood"), ("Did you know something about moon", "fun.fact_about"), ("Tell about moon", "wiki.lookup"),
+    ("im tired", "greetings.mood"), ("I'm hungry", "greetings.mood"), ("fine thanks", "greetings.mood"), ("alhamdulillah", "greetings.mood"),
+]
+
 # --- must NOT trigger any tool ------------------------------------------------------------------------------------------------
 NEGATIVE = [
     "whether or not to go", "i don't know whether it will work", "good news", "bad news", "no news is good news", "movie night at my place",
@@ -71,7 +78,7 @@ NEGATIVE = [
     "yes/no", "and/or", "can you help me with my homework", "see you tomorrow", "what do you think", "i'll roll up my sleeves", "lets play", "play",
     "the weather was terrible last week", "i have a coin collection", "my dice are broken", "the book was great", "i watched a movie yesterday",
     "that joke was bad", "thanks but no thanks to that idea", "random thoughts", "just testing", "what", "why", "ok then", "hmm interesting",
-    "who", "tell me", "convert", "play", "quran is a book", "the news was boring", "bye bye bye bye bye",
+    "i'm going to the market", "im sorry", "i am a student", "i feel like pizza", "doing laundry", "who", "tell me", "convert", "play", "quran is a book", "the news was boring", "bye bye bye bye bye",
 ]
 
 # --- messages that should ask a clarifying question (feature identified, an input missing) -------------------------------------
@@ -97,11 +104,12 @@ GAPS = [
     ("bitcoin price", "search.web", "price/real-time queries have no tool (crypto/stocks tool)"),
     ("lahore ka mausam kaisa hai aaj", "weather.current", "Roman Urdu with a trailing time word"),
     ("kal ka mausam lahore", "weather.forecast", "Roman Urdu 'kal' (tomorrow)"),
-    ("did you know something about moon", "fun.fact", "real user message (from the log): 'did you know something about <topic>' wants a topical fact; a generic fact is the minimum"),
 ]
 
 # --- argument extraction: the feature AND what was captured (case of names/URLs must survive) ---------------------------------
 ARGS = [
+    ("tell about moon", "wiki.lookup", {"topic": "moon"}), ("did you know something about the moon", "fun.fact_about", {"topic": "the moon"}),
+    ("i'm tired", "greetings.mood", {"mood": "tired"}),
     ("weather in Lahore", "weather.current", {"place": "Lahore"}), ("what's the weather in New York?", "weather.current", {"place": "New York"}),
     ("forecast for Tokyo", "weather.forecast", {"place": "Tokyo"}), ("100 usd to pkr", "currency.convert", {"amount": "100", "base": "usd", "quote": "pkr"}),
     ("convert 50 euros to dollars", "currency.convert", {"amount": "50", "base": "euros", "quote": "dollars"}),

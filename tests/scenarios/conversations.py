@@ -88,4 +88,14 @@ OUTAGES = [
     Scenario("outage mid-game does not end the game", [T("play hangman", fail="connect", session="hangman"), T("e", session="hangman")]),
 ]
 
-ALL = [*FOLLOWUPS, *CLARIFY, *REPEATS, *GREETINGS, *HELP, *UNKNOWN, *OUTAGES]
+REAL_CHATS = [
+    Scenario("real chat: feelings, a topical fact, and 'tell about'", [
+        T("I'm good", any_of=["Glad", "Nice", "Great"], lacks=["don't know", "Wikipedia"]),
+        T("Did you know something about moon", has="Did you know?", lacks="didn't get that", http="moon"),
+        T("Tell about moon", has="📚", lacks="didn't get that", http="moon")]),
+    Scenario("first-person statements are acknowledged, not looked up", [
+        T("I just got home", has="Thanks for telling me", lacks="Wikipedia"), T("my phone is slow", has="Thanks for telling me")]),
+    Scenario("moods get fitting answers", [T("i'm tired", has="rest"), T("im bored", has="Games"), T("i'm hungry", has="pizza"), T("i feel sad", has="Sorry")]),
+]
+
+ALL = [*FOLLOWUPS, *CLARIFY, *REPEATS, *GREETINGS, *HELP, *UNKNOWN, *OUTAGES, *REAL_CHATS]

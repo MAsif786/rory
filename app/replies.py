@@ -85,6 +85,8 @@ def not_understood(registry: Registry, times: int = 1, text: str = "") -> str:
         return random.choice(ACK_REPLIES)
     if close := _suggestion(registry, text):
         return f"🤔 I didn't get that. Did you mean _{close}_?"
+    if re.match(r"^(?:i|im|i'm|i am|ive|i've|ill|i'll|my|me|we|our|you|your|youre|you're|it|its|it's|this|that)\b", clean):
+        return "🙂 Thanks for telling me! I'm best with questions and little tasks — send *help* to see what I can do."
     if m := re.match(r"^(?:what|how) about (.+)$", clean):          # a follow-up with nothing to follow
         return (f"🤔 What about *{m.group(1)}*? I've lost track of what we were talking about.\n\n"
                 + tip(f"Ask in full, e.g. _weather in {m.group(1)}_ — or send *help* to see what I can do"))
