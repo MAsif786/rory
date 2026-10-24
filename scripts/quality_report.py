@@ -63,7 +63,7 @@ def improve(text):
 # --- 1. intent detection -------------------------------------------------------------------------------------------------------
 def intent_section():
     heading("1. Intent detection (labelled corpus)")
-    positive = [*C.PLAIN, *C.NOISY, *C.WRAPPED, *C.PROMOTED]
+    positive = [*C.PLAIN, *C.NOISY, *C.WRAPPED, *C.PROMOTED, *C.REAL]
     hits, total, misses = defaultdict(int), defaultdict(int), []
     for text, expected in positive:
         total[expected] += 1
@@ -127,7 +127,7 @@ def phrase_section():
         print(f"  Features with a single example (weak regression protection): {few}")
         for f in few:
             improve(f"add a second example to {f}")
-    uncovered = sorted({s.full_name for s in SPECS} - {f for _, f in [*C.PLAIN, *C.NOISY, *C.WRAPPED, *C.PROMOTED]} - {f for _, f, _ in C.ARGS})
+    uncovered = sorted({s.full_name for s in SPECS} - {f for _, f in [*C.PLAIN, *C.NOISY, *C.WRAPPED, *C.PROMOTED, *C.REAL]} - {f for _, f, _ in C.ARGS})
     gate("every feature has corpus coverage", not uncovered, f"missing: {uncovered}" if uncovered else "")
 
 
@@ -258,6 +258,19 @@ def log_section(path: str):
     gate("no tool crashes in the log", not errors)
 
 
+def inbox_section(path: str):
+    from app.inbox import group_entries, load_reviewed, read_entries
+    heading(f"7. Improvement inbox ({path})")
+    entries = read_entries(path)
+    reviewed_path = Path(path).with_name(Path(path).stem + ".reviewed.json")
+    rows = group_entries(entries, SPECS, load_reviewed(reviewed_path))
+    print(f"  {len(entries)} recorded, {len(rows)} distinct message(s) still to review (scripts/unmatched.py list)")
+    for g in rows[:10]:
+        kind = "tool failed" if "tool_error" in g.kinds else "not understood"
+        print(f"    {g.count:>3}x {g.sample!r} [{kind}]" + (f"  ~ {g.nearest!r} ({g.suggested})" if g.nearest else ""))
+        improve(f"inbox ({g.count}x, {kind}): {g.sample!r}" + (f" ~ {g.suggested}" if g.suggested else ""))
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--tests", action="store_true", help="also run the pytest suite")
@@ -274,6 +287,9 @@ def main():
         pytest_section(args.live)
     if args.log:
         log_section(args.log)
+    inbox_file = os.environ.get("UNMATCHED_PATH") or "data/unmatched.jsonl"
+    if Path(inbox_file).exists():
+        inbox_section(inbox_file)
     heading("Improvement candidates" + f" ({len(report['improvements'])})")
     for i, item in enumerate(report["improvements"], 1):
         print(f"  {i:>2}. {item}")

@@ -67,8 +67,9 @@ Order is set by `quality_report.py --log`, but the known backlog (`GAPS`) alread
    `hybrid` = rules first, then a model only for messages the rules left unmatched (optional, off by default, keeps "no LLM needed").
    The model sees metadata only, returns a `Decision`, and is validated by the same registry. Acceptance: corpus accuracy must not
    drop, `NEGATIVE` false positives stay 0, and cost/latency are logged per call.
-6. **Learning loop**: `scripts/quality_report.py --log` already groups unmatched messages; add `--suggest` to propose phrases
-   (nearest feature + the captured text) as a ready-to-paste corpus/phrase diff for review.
+6. **Learning loop** (started: the improvement inbox `data/unmatched.jsonl` + `scripts/unmatched.py list|corpus|review|stats|prune` record, group,
+   suggest the nearest feature and export corpus lines). Next: propose the *phrase* to add (nearest feature + captured text) as a diff,
+   and move the inbox into the Phase 1 state store so it survives redeploys and can be reviewed from a dashboard.
 
 ## Phase 4 - More tools (each is a folder; ranked by user value)
 

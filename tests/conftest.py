@@ -1,3 +1,10 @@
+import os
+import tempfile
+from pathlib import Path
+
+# Tests must never write into the real improvement inbox: point it at a throwaway file *before* app.main is imported anywhere.
+os.environ["UNMATCHED_PATH"] = str(Path(tempfile.mkdtemp(prefix="rory-test-")) / "unmatched.jsonl")
+
 import itertools
 import sys
 import textwrap

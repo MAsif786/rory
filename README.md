@@ -17,6 +17,8 @@ python -m venv .venv && .venv/bin/pip install -r requirements.txt -r requirement
 .venv/bin/python scripts/quality_report.py     # how well does Rory understand, and what to improve next
 ```
 
+Messages Rory could not answer are saved to `data/unmatched.jsonl`; review them with `scripts/unmatched.py list` ([how it fits in](docs/TEST_PLAN.md)).
+
 Testing is described in [docs/TEST_PLAN.md](docs/TEST_PLAN.md) (intent corpus, follow-ups, conversations, failure matrix, live API checks).
 
 ## What Rory can do

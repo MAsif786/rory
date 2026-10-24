@@ -46,7 +46,11 @@ way the network does (`httpx.ConnectError`, `ReadTimeout`, real `httpx.Response`
 
 ## 3. The improvement loop
 
-1. **Collect.** The bot logs `unmatched: '<text>'` for every message nothing understood, and `tool handler failed: <feature>` /
+1. **Collect.** Every message Rory cannot handle is also saved to the **improvement inbox** (`data/unmatched.jsonl`, never committed,
+   chat ids hashed, pruned after 30 days): `unmatched` = nothing understood it, `tool_error` = a tool failed for a message that was
+   understood. Review it with `scripts/unmatched.py list` (grouped by frequency, with the nearest known feature), turn rows into
+   corpus lines with `scripts/unmatched.py corpus`, and hide handled ones with `review`. `quality_report.py` includes the inbox
+   automatically. Besides that, the bot logs `unmatched: '<text>'` for every message nothing understood, and `tool handler failed: <feature>` /
    `upstream problem in <feature>` for tool problems. Run `scripts/quality_report.py --log server.log`: it groups unmatched messages
    by frequency, suggests the nearest known example, and counts tool crashes vs upstream outages per feature.
 2. **Label.** Add the message to `tests/corpus/intents.py`: into `PLAIN`/`NOISY`/`WRAPPED` if it *should* already work, into `GAPS`
