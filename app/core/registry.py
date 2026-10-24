@@ -12,8 +12,12 @@ log = logging.getLogger("wa-bot.registry")
 _PLACEHOLDER = re.compile(r"\{(\w+)\}")
 
 
-def _shape(phrase: str) -> str:
-    return " ".join(_PLACEHOLDER.sub("{}", phrase).lower().split())
+def _shape(phrase: str, inputs: dict) -> str:
+    """The phrase with each placeholder replaced by its pattern, so `{n} km` and `{name} km` clash but `{n:digits}` doesn't."""
+    def slot(m):
+        inp = inputs.get(m.group(1))
+        return "{" + (inp.pattern if inp and inp.pattern else "") + "}"
+    return " ".join(_PLACEHOLDER.sub(slot, phrase).lower().split())
 
 
 class Registry:
@@ -68,11 +72,16 @@ class Registry:
             if not inspect.iscoroutinefunction(feat.handler):
                 raise ValueError(f"{where}: handler must be `async def`")
             self._check_params(feat.handler, spec, where)
+            for name, inp in spec.inputs.items():
+                try:
+                    re.compile(inp.pattern or "")
+                except re.error as e:
+                    raise ValueError(f"{where}: input {name!r} has a bad pattern: {e}") from None
             for phrase in spec.phrases:
                 self._check_placeholders(phrase, spec, where)
-                shape = _shape(phrase)
+                shape = _shape(phrase, spec.inputs)
                 owner = shapes.get(shape) or self._phrases.get(shape)
-                if owner:
+                if owner and owner != spec.full_name:
                     raise ValueError(f"{where}: phrase {phrase!r} is already claimed by {owner}")
                 shapes[shape] = spec.full_name
             for fu in spec.followups:

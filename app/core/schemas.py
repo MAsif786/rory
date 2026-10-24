@@ -15,6 +15,8 @@ class Input(Schema):
     required: bool = False
     default: Any = None
     choices: tuple | None = None
+    ask: str | None = None             # question to ask when this input is missing (default: "Which <name>?")
+    pattern: str | None = None         # regex a phrase placeholder must match, e.g. r"\d+(?:\.\d+)?" (default: any text)
 
 
 class Followup(Schema):

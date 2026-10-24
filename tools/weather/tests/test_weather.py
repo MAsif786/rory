@@ -1,5 +1,4 @@
 """Weather tests: offline, with a fake HTTP client, plus routing through the real registry."""
-from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
@@ -34,7 +33,9 @@ class FakeHttp:
 
 
 def make_bot(http):
-    reg = Registry().discover(Path(__file__).resolve().parents[2], "tools")
+    from tools.weather.tool import tool
+    reg = Registry()
+    reg.add(tool, "weather")                         # only this tool, so other tools can't change these results
     assert "weather" in reg.tools, reg.rejected
     return Bot(reg, Dispatcher(reg), decide, ContextStore(), SimpleNamespace(http=http))
 
@@ -75,7 +76,7 @@ async def test_missing_city_asks_then_answers(bot):
 async def test_followup_switches_place(bot, http):
     await bot.handle("c", "forecast for Lahore")
     out = await bot.handle("c", "what about Karachi")
-    assert "5-day" in out and http.cities == ["lahore", "karachi"]   # engine lowercases captured args
+    assert "5-day" in out and http.cities == ["Lahore", "Karachi"]
 
 
 async def test_unknown_place_is_friendly(bot):

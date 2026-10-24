@@ -4,11 +4,14 @@ import logging
 from dataclasses import dataclass, field
 from typing import Any
 
+import httpx
+
 from app.core.registry import Registry
 from app.core.schemas import Context, Continue, Finish, Input, PassThrough, SessionStart, UserError
 
 log = logging.getLogger("wa-bot.dispatcher")
 GENERIC_ERROR = "😕 Something went wrong. Please try again."
+NETWORK_ERROR = "🌐 I couldn't reach that service right now. Please try again in a moment."
 
 
 class BadArgs(Exception):
@@ -58,6 +61,9 @@ class Dispatcher:
             return await asyncio.wait_for(coro, self.timeout)
         except UserError as e:                               # safe to show
             return e
+        except httpx.HTTPError:                              # upstream down or slow: say so, log the details
+            log.warning("upstream problem in tool handler", exc_info=True)
+            return UserError(NETWORK_ERROR)
         except Exception:                                    # noqa: BLE001 - details go to the log only
             log.exception("tool handler failed")
             return None

@@ -2,17 +2,6 @@
 from pydantic import BaseModel
 
 
-class Place(BaseModel):
-    name: str
-    country: str = ""
-    latitude: float
-    longitude: float
-
-
-class GeoResponse(BaseModel):
-    results: list[Place] = []
-
-
 class Current(BaseModel):
     weather_code: int
     temperature_2m: float

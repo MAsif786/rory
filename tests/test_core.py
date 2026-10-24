@@ -71,3 +71,16 @@ async def go(ctx):
     await asyncio.sleep(5)
 '''
     assert (await run(load(make_tools, slow=slow), "slow.go", {}, timeout=0.05)).reply == GENERIC_ERROR
+
+
+async def test_upstream_http_errors_get_a_network_message(make_tools):
+    src = '''
+import httpx
+from app.core.tool import Tool
+tool = Tool("flaky")
+@tool.feature("go", phrases=["go"], examples=["go"])
+async def go(ctx):
+    raise httpx.ReadTimeout("slow")
+'''
+    from app.core.dispatcher import NETWORK_ERROR
+    assert (await run(load(make_tools, flaky=src), "flaky.go", {})).reply == NETWORK_ERROR

@@ -19,14 +19,23 @@ def _examples(tool: Tool) -> list[str]:
     return [ex for f in tool.features.values() for ex in f.spec.examples][:MAX_EXAMPLES]
 
 
+def _is_game(tool: Tool) -> bool:
+    return all(f.spec.kind == "session" for f in tool.features.values())
+
+
 def home_menu(registry: Registry) -> str:
     if not registry.tools:
         return "🏠 *Home*\n\nNo tools are installed yet."
     lines = ["🏠 *Home* — what would you like to do?", ""]
+    games = [t for t in registry.tools.values() if _is_game(t)]
     for t in registry.tools.values():
+        if _is_game(t):
+            continue
         lines.append(f"{t.emoji} *{t.title}*" + (f" — {t.description}" if t.description else ""))
         if ex := _examples(t):
             lines.append("   _" + " · ".join(ex) + "_")
+    if games:
+        lines += ["", "🎮 *Games* — say *play <game>*:", "   " + " · ".join(f"{g.emoji} {g.title}" for g in games)]
     lines += ["", tip("*help <tool>* for details · *help all* lists every feature")]
     return "\n".join(lines)
 
@@ -45,7 +54,8 @@ def greeting(registry: Registry) -> str:
 
 def not_understood(registry: Registry) -> str:
     """The fallback when nothing matched: show real examples from the installed tools."""
-    examples = [t_ex for t in registry.tools.values() for t_ex in _examples(t)[:1]][:4]
+    answers = [t for t in registry.tools.values() if any(f.spec.kind == "answer" for f in t.features.values())]
+    examples = [ex for t in answers for ex in _examples(t)[:1]][:4]
     hint = ("Try " + " · ".join(f"_{e}_" for e in examples) + " — or send *menu*") if examples else "Send *menu* to see what I can do"
     return f"🤔 I didn't get that.\n\n{tip(hint)}"
 

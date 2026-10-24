@@ -33,7 +33,7 @@ def test_replies(sent, text, reply):
 
 def test_unmatched_gets_fallback_with_real_examples(sent):
     client.post("/webhook", json=event("blah blah"))
-    assert sent[0][2].startswith("🤔 I didn't get that.") and "weather in lahore" in sent[0][2]
+    assert sent[0][2].startswith("🤔 I didn't get that.") and "💡 Try _" in sent[0][2]
 
 
 def test_greeting_leads_to_the_menu(sent):

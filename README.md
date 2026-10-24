@@ -16,4 +16,21 @@ python -m venv .venv && .venv/bin/pip install -r requirements.txt -r requirement
 .venv/bin/python -m pytest
 ```
 
+## What Rory can do
+
+Send *help* in chat to see this list, or *help <tool>* for details.
+
+| Tool | Try |
+|---|---|
+| Weather | `weather in lahore` · `forecast for tokyo` |
+| Currency · Units · Calculator | `100 usd to pkr` · `5 km in miles` · `15% of 200` · `sqrt(144)` |
+| Clock | `time in Tokyo` |
+| Wikipedia · Movies · Books · Countries | `who is Einstein` · `movie Inception` · `who wrote Dune` · `capital of France` |
+| GitHub · IP lookup · Link preview | `repo tiangolo/fastapi` · `8.8.8.8` · paste any URL, then `tech` / `security` / `links` |
+| Quran | `2:255` · `ayat al kursi in urdu` · `verses about patience` · `surah rahman` · `tafsir 2:255` |
+| Fun · Dice | `tell me a joke` · `flip a coin` · `roll 2d6` · `choose pizza or sushi` |
+| Games | `play blackjack` / `dungeon` / `guess` / `hangman` / `highlow` / `memory` / `quiz` / `rps` / `trivia` / `ttt` |
+
+Optional `.env` keys: `BOT_CONTACT`, `TMDB_API_KEY` (movie ratings), `GITHUB_TOKEN` (rate limits).
+
 The earlier full version (tools, intent engines, games) lives on the `modular-architecture` branch.

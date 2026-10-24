@@ -26,7 +26,7 @@ async def say(bot, text):
 async def test_menu_aliases_show_home(bot, word):
     out = await say(bot, word)
     assert out.startswith("🏠 *Home*") and "🌦️ *Weather* — Weather and forecasts" in out
-    assert "_weather in lahore_" in out and "🧩 *Countdown*" in out        # defaults for tools that set no metadata
+    assert "_weather in lahore_" in out and "🎮 *Games*" in out and "🧩 Countdown" in out   # session tools are listed under Games, with default metadata
 
 
 async def test_help_tool_feature_and_all(bot):

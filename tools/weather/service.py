@@ -1,11 +1,10 @@
 """Open-Meteo access: geocode a city and fetch its forecast. No formatting here."""
 from dataclasses import dataclass
 
-from app.core.schemas import UserError
+from app.geo import geocode
 
-from .schemas import Forecast, GeoResponse
+from .schemas import Forecast
 
-GEO = "https://geocoding-api.open-meteo.com/v1/search"
 API = "https://api.open-meteo.com/v1/forecast"
 
 
@@ -23,10 +22,7 @@ async def _get_json(http, url: str, **params) -> dict:
 
 async def fetch(http, city: str, days: int) -> Report:
     """`http` is ctx.services.http. Raises UserError for an unknown place; network errors propagate to the dispatcher."""
-    found = GeoResponse.model_validate(await _get_json(http, GEO, name=city, count=1, language="en"))
-    if not found.results:
-        raise UserError(f"📍 Couldn't find a place called *{city}*.")
-    place = found.results[0]
+    place = await geocode(http, city)
     data = await _get_json(
         http, API, latitude=place.latitude, longitude=place.longitude, timezone="auto", forecast_days=days,
         temperature_unit="celsius", wind_speed_unit="kmh",
