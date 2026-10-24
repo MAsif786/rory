@@ -230,7 +230,10 @@ async def test_news_is_not_triggered_by_small_talk(bot):
 async def test_web_search_needs_a_key_then_returns_results(monkeypatch):
     bot, http = make_bot({"customsearch": {"items": [{"title": "Best Pizza", "snippet": "Top pizza places", "link": "https://pizza.example"}]}})
     monkeypatch.delenv("GOOGLE_API_KEY", raising=False)
-    assert "isn't set up yet" in await say(bot, "google best pizza")
+    monkeypatch.delenv("GOOGLE_CSE_ID", raising=False)
+    # not configured: an ordinary answer from Wikipedia, never an instruction about .env or API keys
+    out = await say(bot, "google best pizza")
+    assert "GOOGLE" not in out and ".env" not in out and "set up" not in out
     monkeypatch.setenv("GOOGLE_API_KEY", "k")
     monkeypatch.setenv("GOOGLE_CSE_ID", "cx")
     out = await say(bot, "search for pizza in lahore")

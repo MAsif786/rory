@@ -9,6 +9,7 @@ from tests.helpers import lint_reply, make_bot, real_registry
 REG = real_registry()
 CASES = [(s.full_name, ex) for s in REG.specs() if s.tool != "link" for ex in s.examples]
 ERRORS = ("Something went wrong", "couldn't reach", "didn't get that", "isn't set up")
+OPERATOR_ONLY = ("API_KEY", "API key", ".env", "GOOGLE_", "TMDB", "GITHUB_TOKEN", "BOT_CONTACT", "NEWS_COUNTRY", "environment variable")
 MAX_LINES, MAX_LINE = 40, 300
 
 
@@ -24,6 +25,7 @@ async def test_reply_is_clean_scannable_and_not_an_error(feature, example):
     reply = await bot.respond("c", example)
     assert not lint_reply(reply), reply
     assert not any(e in reply for e in ERRORS), f"{example!r} -> error reply:\n{reply}"
+    assert not any(w in reply for w in OPERATOR_ONLY), f"{example!r} shows server configuration to the user:\n{reply}"
     lines = reply.split("\n")
     assert len(lines) <= MAX_LINES, f"{len(lines)} lines is too long to read on a phone"
     long = [l for l in lines if len(l) > MAX_LINE and "http" not in l]
@@ -52,3 +54,13 @@ async def test_every_menu_and_help_page_is_clean():
         reply = await bot.respond("c", page)
         assert not lint_reply(reply), f"{page!r}: {lint_reply(reply)}\n{reply}"
         assert len(reply) < 6000, f"{page!r} is {len(reply)} chars"
+
+
+async def test_no_reply_ever_tells_users_how_to_configure_the_server(monkeypatch):
+    """Optional keys (TMDB, GitHub, Google...) are unset by default: every tool must still answer without mentioning them."""
+    for key in ("GOOGLE_API_KEY", "GOOGLE_CSE_ID", "TMDB_API_KEY", "GITHUB_TOKEN", "BOT_CONTACT", "NEWS_COUNTRY"):
+        monkeypatch.delenv(key, raising=False)
+    bot, _ = make_bot(F.routes())
+    for feature, example in CASES:
+        reply = await bot.respond("c", example)
+        assert not any(w in reply for w in OPERATOR_ONLY), f"{feature}: {example!r} shows server configuration:\n{reply}"

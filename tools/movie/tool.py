@@ -26,8 +26,7 @@ async def info(ctx, title):
     http, key = ctx.services.http, os.getenv("TMDB_API_KEY", "").strip()
     if not key:
         page = await summary(http, title, suffix="film", missing=f"🎬 No movie found for *{title}*.")
-        return (f"🎬 *{page['title']}*\n{cut(page.get('extract'), 450)}\n\n🔗 {page_url(page)}\n"
-                "_(From Wikipedia. Add TMDB_API_KEY for ratings.)_")
+        return (f"🎬 *{page['title']}*\n{cut(page.get('extract'), 450)}\n\n🔗 {page_url(page)}")
     headers, params = {}, {"query": title}
     if len(key) > 40:                                # v4 read-access token
         headers["Authorization"] = f"Bearer {key}"

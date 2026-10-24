@@ -19,7 +19,7 @@ from app.core.services import Services
 pytestmark = pytest.mark.live
 REG = real_registry()
 ERRORS = ("Something went wrong", "couldn't reach", "didn't get that")
-NEEDS_KEY = {"search.web": ("GOOGLE_API_KEY", "GOOGLE_CSE_ID")}
+NEEDS_KEY: dict = {}          # web search degrades to Wikipedia without Google keys, so it needs none to be testable
 # one example per feature is enough to prove the endpoint still works; session features (games) are covered too: their first reply
 CASES = [(s.full_name, s.examples[0]) for s in REG.specs() if s.examples]
 SLOW_SECONDS = 8

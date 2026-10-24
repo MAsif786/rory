@@ -103,3 +103,14 @@ async def test_a_slow_trivia_api_falls_back_to_the_offline_bank_quickly(monkeypa
     start = time.perf_counter()
     reply = await bot.respond("c", "play trivia")
     assert time.perf_counter() - start < 2 and "A)" in reply
+
+
+@pytest.mark.parametrize("query", ["google einstein", "search for best pizza in lahore", "google zzzqqq nothing here"])
+async def test_unconfigured_web_search_never_shows_setup_instructions(query, monkeypatch):
+    """Missing server configuration is the operator's problem: users get an answer or a plain 'nothing found', never .env / API-key text."""
+    monkeypatch.delenv("GOOGLE_API_KEY", raising=False)
+    monkeypatch.delenv("GOOGLE_CSE_ID", raising=False)
+    for fail in (None, "connect", "empty", "malformed"):
+        bot, _ = make_bot(F.routes(), fail=fail)
+        reply = await bot.respond("c", query)
+        assert not lint_reply(reply) and not any(w in reply for w in ("GOOGLE", ".env", "API key", "set up", "programmablesearchengine")), reply
