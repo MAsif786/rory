@@ -1,0 +1,24 @@
+# secrets / local config (keep .env.example tracked)
+.env
+!.env.example
+
+# runtime data
+.sessions/
+.media/
+data/
+*.db
+server.log
+
+# python
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+*.egg-info/
+
+# os / editor
+.DS_Store
+.idea/
+.vscode/

@@ -1,0 +1,16 @@
+services:
+  waha:
+    image: devlikeapro/waha:arm
+    container_name: waha
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3000:3000"
+    env_file: .env
+    environment:
+      WHATSAPP_RESTART_ALL_SESSIONS: "True"
+      WHATSAPP_START_SESSION: default
+      WHATSAPP_HOOK_URL: http://host.docker.internal:8000/webhook
+      WHATSAPP_HOOK_EVENTS: message
+    volumes:
+      - ./.sessions:/app/.sessions
+      - ./.media:/app/.media
