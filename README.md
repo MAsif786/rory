@@ -1,7 +1,7 @@
 # WhatsApp bot (simple)
 
 FastAPI webhook for [WAHA](https://waha.devlike.pro): it receives incoming messages at `POST /webhook` and replies with text.
-`app/main.py:reply_for()` is the only logic — *ping* → pong, *hi* → greeting, anything else is echoed.
+Drop a folder into `tools/` and the bot picks it up — see [docs/ADDING_A_TOOL.md](docs/ADDING_A_TOOL.md). Routing lives in `app/smart.py`; unmatched messages are echoed.
 
 ```bash
 cp .env.example .env              # set WAHA_API_KEY

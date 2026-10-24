@@ -1,0 +1,92 @@
+"""Weather tests: offline, with a fake HTTP client, plus routing through the real registry."""
+from pathlib import Path
+from types import SimpleNamespace
+
+import pytest
+
+from app.core.context import ContextStore
+from app.core.dispatcher import Dispatcher
+from app.core.registry import Registry
+from app.core.schemas import Context
+from app.intent.rule_based import decide
+from app.smart import Bot
+
+PLACE = {"name": "Lahore", "country": "Pakistan", "latitude": 31.5, "longitude": 74.3}
+DAYS = 5
+API = {"current": {"weather_code": 1, "temperature_2m": 21.4, "apparent_temperature": 20.6, "relative_humidity_2m": 63, "wind_speed_10m": 3.2},
+       "daily": {"time": [f"2026-10-{25 + i}" for i in range(DAYS)], "weather_code": [0, 61, 3, 95, 1],
+                 "temperature_2m_min": [17] * DAYS, "temperature_2m_max": [29] * DAYS, "precipitation_probability_max": [0, 80, 10, None, 5]}}
+
+
+class FakeHttp:
+    def __init__(self, fail=False):
+        self.fail, self.cities = fail, []
+
+    async def get(self, url, params):
+        if self.fail:
+            raise RuntimeError("upstream down")
+        if "geocoding" in url:
+            self.cities.append(params["name"])
+            body = {} if params["name"] == "nowhereville" else {"results": [PLACE]}
+        else:
+            body = API
+        return SimpleNamespace(raise_for_status=lambda: None, json=lambda: body)
+
+
+def make_bot(http):
+    reg = Registry().discover(Path(__file__).resolve().parents[2], "tools")
+    assert "weather" in reg.tools, reg.rejected
+    return Bot(reg, Dispatcher(reg), decide, ContextStore(), SimpleNamespace(http=http))
+
+
+@pytest.fixture
+def http():
+    return FakeHttp()
+
+
+@pytest.fixture
+def bot(http):
+    return make_bot(http)
+
+
+async def test_current_formats_report(bot):
+    out = await bot.handle("c", "weather in Lahore")
+    assert "*Lahore, Pakistan*" in out and "21°C (feels 21°C)" in out and "💧 63%" in out
+    assert len(out.splitlines()) == 4 + DAYS     # fake API returns 5 days regardless
+
+
+async def test_forecast_shows_rain_chance_and_handles_missing(bot):
+    out = await bot.handle("c", "forecast for Lahore")
+    assert "5-day forecast" in out and "☔ 80%" in out and "☔ 0%" in out
+
+
+@pytest.mark.parametrize("text, title", [
+    ("is it raining in Karachi", "Lahore"), ("weather next week in Dubai", "5-day"), ("will it rain tomorrow in Murree", "5-day"),
+    ("what's the weather in Paris?", "Lahore"), ("Dubai forecast", "5-day")])
+async def test_routing(bot, text, title):
+    assert title in await bot.handle("c", text)
+
+
+async def test_missing_city_asks_then_answers(bot):
+    assert await bot.handle("c", "what's the weather") == "Which place?"
+    assert "Lahore" in await bot.handle("c", "Lahore")
+
+
+async def test_followup_switches_place(bot, http):
+    await bot.handle("c", "forecast for Lahore")
+    out = await bot.handle("c", "what about Karachi")
+    assert "5-day" in out and http.cities == ["lahore", "karachi"]   # engine lowercases captured args
+
+
+async def test_unknown_place_is_friendly(bot):
+    assert "Couldn't find a place called *nowhereville*" in await bot.handle("c", "weather in nowhereville")
+
+
+async def test_upstream_failure_is_generic():
+    out = await make_bot(FakeHttp(fail=True)).handle("c", "weather in lahore")
+    assert "Something went wrong" in out and "upstream" not in out
+
+
+async def test_no_false_positives(bot):
+    for text in ["whether or not to go", "good morning", "tell me a joke"]:
+        assert await bot.handle("c", text) is None

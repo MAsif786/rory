@@ -3,6 +3,12 @@ import logging
 
 from fastapi import FastAPI, Request
 
+from app.core.context import ContextStore
+from app.core.dispatcher import Dispatcher
+from app.core.registry import Registry
+from app.core.services import Services
+from app.intent.rule_based import decide
+from app.smart import Bot
 from app.waha import send_text
 
 log = logging.getLogger("wa-bot")
@@ -11,14 +17,13 @@ logging.basicConfig(level=logging.INFO)
 app = FastAPI(title="WhatsApp Bot")
 
 
-def reply_for(text: str) -> str:
-    """The whole 'brain' for now: swap this function for real logic later."""
-    word = text.strip().lower()
-    if word in ("hi", "hello", "hey"):
-        return "👋 Hello! Send *ping* to test me."
-    if word == "ping":
-        return "pong 🏓"
-    return f"You said: {text.strip()}"
+services = Services()
+registry = Registry().discover()
+bot = Bot(registry, Dispatcher(registry), decide, ContextStore(), services)
+
+
+async def reply_for(chat_id: str, text: str) -> str:
+    return await bot.handle(chat_id, text) or f"You said: {text.strip()}"      # fallback
 
 
 @app.post("/webhook")
@@ -31,7 +36,7 @@ async def webhook(request: Request):
     if p.get("fromMe") or not chat_id or not text:                  # ignore our own messages and empty events
         return {"ok": True}
     log.info("%s: %s", chat_id, text)
-    await send_text(event.get("session", "default"), chat_id, reply_for(text))
+    await send_text(event.get("session", "default"), chat_id, await reply_for(chat_id, text))
     return {"ok": True}
 
 
