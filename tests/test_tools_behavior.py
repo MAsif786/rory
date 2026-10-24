@@ -196,14 +196,21 @@ def rss_bot():
 async def test_news_headlines_and_topic():
     bot, http = rss_bot()
     out = await say(bot, "today's news")
-    assert "📰 *Top headlines*" in out and "1. *Rover finds ice on Mars*" in out and "Space Daily · 3h ago" in out
+    assert "📰 *Top headlines*" in out and "1️⃣ *Rover finds ice on Mars*" in out and "_Space Daily · 3h ago_" in out
+    assert "https://" not in out and "Reply *1*–*2* to get a link" in out          # links are sent on request, not listed
     assert "q" not in http.calls[0][1]                                          # the top-stories feed
+    link = await say(bot, "2")                                                   # reply with a number to open that story
+    assert link.startswith("🔗 *Second story*") and "https://news.example/2" in link and len(http.calls) == 1   # no new fetch
     out = await say(bot, "news about mars")
     assert "📰 *News: mars*" in out and http.calls[-1][1]["q"] == "mars when:2d"
     await say(bot, "pakistan news")
     assert http.calls[-1][1]["q"] == "pakistan when:2d"
     await say(bot, "what about cricket")                                         # follow-up keeps the news feature
     assert http.calls[-1][1]["q"] == "cricket when:2d"
+    assert "https://news.example/1" in await say(bot, "open 1")
+    assert "from 1 to 2" in await say(bot, "link 5")                             # out of range is a friendly error
+    out = await say(bot, "what about football")                                  # a new topic resets the story pick
+    assert "📰 *News: football*" in out and http.calls[-1][1]["q"] == "football when:2d"
 
 
 async def test_news_bad_feed_is_friendly():

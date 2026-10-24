@@ -1,11 +1,13 @@
 """News headlines from Google News (RSS, no key): today's top stories, or news about a topic."""
 import os
+import time
 import xml.etree.ElementTree as ET
 from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
 
 from app.core.schemas import Followup, Input, UserError
 from app.core.tool import Tool
+from app.format import numbered, tip
 
 tool = Tool("news", title="News", emoji="📰", description="Today's headlines, or news about any topic")
 
@@ -51,26 +53,58 @@ async def fetch(http, topic: str | None) -> list[dict]:
     return out
 
 
+_shown: dict[str, tuple[float, list[dict]]] = {}      # chat -> (when, the stories last listed), so "2" can open story 2
+SHOWN_TTL = 15 * 60
+
+
+def _remember(chat_id: str, items: list[dict]) -> None:
+    if len(_shown) > 500:
+        _shown.clear()
+    _shown[chat_id] = (time.monotonic(), items)
+
+
 def format_items(heading: str, items: list[dict]) -> str:
-    lines = [heading, ""]
-    for i, n in enumerate(items, 1):
-        meta = " · ".join(x for x in (n["source"], n["ago"]) if x)
-        lines.append(f"{i}. *{n['title']}*" + (f"\n   _{meta}_" if meta else "") + f"\n   {n['link']}")
-    return "\n".join(lines)
+    """Compact numbered headlines; the (very long) Google News links are sent on request, not listed."""
+    lines = [heading, "", *numbered([(n["title"], " · ".join(x for x in (n["source"], n["ago"]) if x)) for n in items])]
+    return "\n".join([*lines, "", tip(f"Reply *1*–*{len(items)}* to get a link")])
+
+
+def format_link(n: dict) -> str:
+    meta = " · ".join(x for x in (n["source"], n["ago"]) if x)
+    return f"🔗 *{n['title']}*\n" + (f"_{meta}_\n" if meta else "") + n["link"]
+
+
+async def _show(ctx, topic: str | None, pick: int | None) -> str:
+    cached = _shown.get(ctx.chat_id)
+    if pick and cached and time.monotonic() - cached[0] < SHOWN_TTL:
+        items = cached[1]                               # "2" right after a list opens the story that was listed
+    else:
+        items = await fetch(ctx.services.http, topic)
+        if not items:
+            raise UserError(f"📰 No recent news found about *{topic}*." if topic else "📰 No headlines right now. Please try again later.")
+        _remember(ctx.chat_id, items)
+    if pick:
+        if pick > len(items):
+            raise UserError(f"📰 Pick a number from 1 to {len(items)}.")
+        return format_link(items[pick - 1])
+    return format_items(f"📰 *News: {topic}*" if topic else "📰 *Top headlines*", items)
+
+
+PICK = Input(type="int", pattern="[1-9]")
+OPEN_STORY = Followup(phrases=["{pick}", "open {pick}", "link {pick}", "link for {pick}", "read {pick}", "story {pick}", "number {pick}",
+                               "link to {pick}", "send {pick}"], overrides=["pick"])
 
 
 @tool.feature(
-    "headlines", description="Today's top headlines", repeat="reuse",
+    "headlines", description="Today's top headlines (reply 1-5 for a link)", repeat="reuse",
     phrases=["news", "the news", "today's news", "todays news", "today news", "news today", "latest news", "the latest news", "top news",
              "top stories", "headlines", "top headlines", "today's headlines", "todays headlines", "headlines today", "what's the news",
              "whats the news", "what's in the news", "any news", "breaking news", "news update", "give me the news", "show me the news"],
     examples=["today's news", "top headlines"],
-    negatives=NOT_NEWS)
-async def headlines(ctx):
-    items = await fetch(ctx.services.http, None)
-    if not items:
-        raise UserError("📰 No headlines right now. Please try again later.")
-    return format_items("📰 *Top headlines*", items)
+    negatives=NOT_NEWS,
+    inputs={"pick": PICK}, followups=[OPEN_STORY])
+async def headlines(ctx, pick):
+    return await _show(ctx, None, pick)
 
 
 @tool.feature(
@@ -81,10 +115,8 @@ async def headlines(ctx):
     keywords=["news", "headlines"],
     examples=["news about mars", "pakistan news"],
     negatives=NOT_NEWS,
-    inputs={"topic": Input(required=True, pattern=TOPIC, ask="📰 News about what? (e.g. *news about cricket*)")},
-    followups=[Followup(phrases=["what about {topic}", "how about {topic}", "and {topic}"], overrides=["topic"])])
-async def about(ctx, topic):
-    items = await fetch(ctx.services.http, topic)
-    if not items:
-        raise UserError(f"📰 No recent news found about *{topic}*.")
-    return format_items(f"📰 *News: {topic}*", items)
+    inputs={"topic": Input(required=True, pattern=TOPIC, ask="📰 News about what? (e.g. *news about cricket*)"), "pick": PICK},
+    followups=[Followup(phrases=["what about {topic}", "how about {topic}", "and {topic}"], overrides=["topic"], sets={"pick": None}),
+               OPEN_STORY])
+async def about(ctx, topic, pick):
+    return await _show(ctx, topic, pick)
