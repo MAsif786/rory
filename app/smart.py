@@ -1,4 +1,6 @@
 """Routing: one fixed order. Reads Decision and results only - it imports no NLU code."""
+import logging
+
 from app import replies
 from app.format import tidy
 from app.core.context import ActiveSession, ContextStore, Pending, Repeat
@@ -7,8 +9,10 @@ from app.core.registry import Registry
 from app.core.schemas import Context, Continue, Finish, PassThrough
 from app.intent.decision import Decision, IntentEngine, LastTurn
 
+log = logging.getLogger("wa-bot.unmatched")
 STOP_WORDS = {"stop", "quit", "exit"}
 MENU_WORDS = {"menu", "home", "start"}
+GAME_WORDS = {"games", "game list", "list games", "play games", "play a game", "play something", "bored", "i'm bored", "im bored", "i am bored"}
 
 
 class Bot:
@@ -25,6 +29,9 @@ class Bot:
         # 0. menu and help always work, even mid-game (the game stays active)
         if command in MENU_WORDS or command == "help" or command.startswith("help "):
             return replies.home_menu(self.registry) if command in MENU_WORDS else replies.help_for(self.registry, command[4:])
+
+        if " ".join(command.rstrip(".!?").split()) in GAME_WORDS:
+            return replies.games_menu(self.registry)
 
         # 1. active game (stop/quit always ends it)
         if chat.session:
@@ -44,11 +51,14 @@ class Bot:
         if command == "ping":
             return "pong 🏓"
 
-        # 3. the bot asked a question: this message is the answer
+        # 3. the bot asked a question: this message is the answer, unless it is clearly a different request
         if chat.pending:
             p = chat.pending
             self.store.set_pending(chat_id, None)
-            return await self._run(chat_id, p.feature, {**p.args, p.missing[0]: text.strip()}, ctx)
+            other = self.engine(text, self.registry.specs(), None)
+            if not (other.kind == "match" and other.feature != p.feature):
+                return await self._run(chat_id, p.feature, {**p.args, p.missing[0]: text.strip()}, ctx)
+            chat = self.store.get(chat_id)                  # fall through: handle it as a fresh request
 
         # 4. intent engine
         key, last = " ".join(word.rstrip(".!?؟ ").split()), chat.repeat
@@ -71,6 +81,7 @@ class Bot:
         reply = await self.handle(chat_id, text)
         if not reply:
             last = self.store.get(chat_id).repeat
+            log.info("unmatched: %r", text[:200])          # scripts/quality_report.py --log reads these to find what to teach the bot
             reply = replies.not_understood(self.registry, last.count if last else 1, text)
         return tidy(reply)
 

@@ -24,5 +24,7 @@ async def lookup(ctx, ip):
     r = await ctx.services.http.get(f"https://ipinfo.io/{addr}/json")
     r.raise_for_status()
     d = r.json()
+    if not d.get("ip"):
+        raise UserError(f"🌐 I couldn't find any information about *{addr}*.")
     return (f"🌐 *{d.get('ip')}*\n📍 {', '.join(x for x in (d.get('city'), d.get('region'), d.get('country')) if x)}\n"
             f"🏢 {d.get('org', '—')}\n🕐 {d.get('timezone', '—')}" + (f"\n🔖 {d['hostname']}" if d.get("hostname") else ""))

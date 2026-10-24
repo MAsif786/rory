@@ -31,7 +31,7 @@ class TicTacToe(Game):
         return "\n".join("".join(cells[r * 3:r * 3 + 3]) for r in range(3))
 
     def start(self) -> str:
-        return f"{self.title}! You're ❌. Send a square number 1-9.\n\n{self.render()}\n\n*reset* restarts, *quit* stops."
+        return f"❌⭕ *{self.title}* — you're ❌. Send a square number 1-9.\n\n{self.render()}\n\n*reset* restarts, *quit* stops."
 
     def _bot_move(self) -> int:
         free = [i for i, c in enumerate(self.board) if not c]

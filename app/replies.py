@@ -34,8 +34,17 @@ def home_menu(registry: Registry) -> str:
         if ex := _examples(t):
             lines.append("   _" + " · ".join(ex) + "_")
     if games:
-        lines += ["", "🎮 *Games* — say *play <game>*:", "   " + " · ".join(f"{g.emoji} {g.title}" for g in games)]
-    lines += ["", tip("*help <tool>* for details · *help all* lists every feature")]
+        lines += ["", "🎮 *Games* — say *play* and a game name:", "   " + " · ".join(f"{g.emoji} {g.title}" for g in games)]
+    lines += ["", tip("*help weather* shows a tool's features · *help all* lists everything")]
+    return "\n".join(lines)
+
+
+def games_menu(registry: Registry) -> str:
+    games = [t for t in registry.tools.values() if _is_game(t)]
+    if not games:
+        return "🎮 *Games*\n\nNo games are installed yet."
+    lines = ["🎮 *Games* — pick one:", ""]
+    lines += [f"{g.emoji} *{g.title}* — {g.description}\n   _play {g.name}_" for g in games]
     return "\n".join(lines)
 
 
@@ -52,6 +61,10 @@ ACKS = {"super", "nice", "cool", "great", "awesome", "wow", "good", "amazing", "
         "testing", "👍", "🙏", "😂", "🙂", "😊"}
 ACK_REPLIES = ["😊 Glad to hear it! Ask me anything else — send *help* for ideas.", "👍 Anytime! Send *help* if you want ideas.",
                "🙂 I'm here whenever you need something. Send *help* to see what I can do."]
+
+
+QUESTION_WORDS = {"what", "whats", "who", "whom", "why", "when", "where", "how", "which", "is", "are", "was", "were", "do", "does", "did",
+                  "can", "could", "will", "would", "should", "tell", "show", "give", "and", "or", "but", "so"}
 
 
 def _suggestion(registry: Registry, text: str) -> str | None:
@@ -72,7 +85,11 @@ def not_understood(registry: Registry, times: int = 1, text: str = "") -> str:
         return random.choice(ACK_REPLIES)
     if close := _suggestion(registry, text):
         return f"🤔 I didn't get that. Did you mean _{close}_?"
-    if 0 < len(clean.split()) <= 3 and clean.replace(" ", "").isalpha() and "wiki" in registry.tools:
+    if m := re.match(r"^(?:what|how) about (.+)$", clean):          # a follow-up with nothing to follow
+        return (f"🤔 What about *{m.group(1)}*? I've lost track of what we were talking about.\n\n"
+                + tip(f"Ask in full, e.g. _weather in {m.group(1)}_ — or send *help* to see what I can do"))
+    if (0 < len(clean.split()) <= 3 and clean.replace(" ", "").isalpha() and "wiki" in registry.tools
+            and clean.split()[0] not in QUESTION_WORDS):
         return (f"🤔 I don't know *{clean}* yet.\n\n"
                 + tip(f"Send _tell me about {clean}_ to look it up on Wikipedia, or *help* to see what I can do"))
     answers = [t for t in registry.tools.values() if any(f.spec.kind == "answer" for f in t.features.values())]

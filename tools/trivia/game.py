@@ -1,3 +1,4 @@
+import asyncio
 import html
 import random
 
@@ -7,6 +8,7 @@ from app.fun import pick
 from app.games import Game
 from .bank import BANK
 
+QUESTION_TIMEOUT = 3          # seconds: a slow trivia API must not keep a player waiting; the offline bank is the fallback
 LETTERS = "ABCD"
 RIGHT = ["✅ Correct!", "🎯 Nailed it!", "🧠 Big brain!"]
 WRONG = ["❌ Nope!", "🙈 Not quite!", "😬 Ouch, no."]
@@ -15,7 +17,7 @@ WRONG = ["❌ Nope!", "🙈 Not quite!", "😬 Ouch, no."]
 async def fetch_question(http) -> dict:
     """OpenTDB first, offline bank as fallback. `http` is the shared httpx client (ctx.services.http)."""
     try:
-        r = await http.get("https://opentdb.com/api.php", params={"amount": 1, "type": "multiple"})
+        r = await asyncio.wait_for(http.get("https://opentdb.com/api.php", params={"amount": 1, "type": "multiple"}), QUESTION_TIMEOUT)
         r.raise_for_status()
         data = r.json()
         q = data["results"][0]
@@ -25,7 +27,7 @@ async def fetch_question(http) -> dict:
             "correct": html.unescape(q["correct_answer"]),
             "wrong": [html.unescape(a) for a in q["incorrect_answers"]],
         }
-    except (httpx.HTTPError, KeyError, IndexError, ValueError):
+    except (httpx.HTTPError, asyncio.TimeoutError, KeyError, IndexError, ValueError):
         cat, q, c, w = random.choice(BANK)
         return {"cat": cat, "q": q, "correct": c, "wrong": list(w)}
 

@@ -39,7 +39,7 @@ class Dispatcher:
             clean = self._validate(feat.spec.inputs, args)
         except BadArgs as e:
             return Run(str(e), ok=False)
-        out = await self._call(feat.handler(ctx, **clean))
+        out = await self._call(feat.handler(ctx, **clean), full_name)
         if out is None:
             return Run(GENERIC_ERROR, ok=False)
         if isinstance(out, UserError):
@@ -51,21 +51,21 @@ class Dispatcher:
     async def run_session(self, tool_name: str, state: Any, message: str, ctx: Context):
         """Returns Continue, Finish or PassThrough."""
         tool = self.registry.tools.get(tool_name)
-        out = await self._call(tool.session_handler(ctx, state, message)) if tool and tool.session_handler else None
+        out = await self._call(tool.session_handler(ctx, state, message), tool_name) if tool and tool.session_handler else None
         if isinstance(out, UserError):
             return Finish(str(out))
         return out if isinstance(out, (Continue, Finish, PassThrough)) else Finish(GENERIC_ERROR)
 
-    async def _call(self, coro):
+    async def _call(self, coro, label: str = ""):
         try:
             return await asyncio.wait_for(coro, self.timeout)
         except UserError as e:                               # safe to show
             return e
-        except httpx.HTTPError:                              # upstream down or slow: say so, log the details
-            log.warning("upstream problem in tool handler", exc_info=True)
+        except httpx.HTTPError as e:                         # upstream down or slow: say so, log one line (no traceback: it is not our bug)
+            log.warning("upstream problem in %s: %s %s", label, type(e).__name__, e)
             return UserError(NETWORK_ERROR)
         except Exception:                                    # noqa: BLE001 - details go to the log only
-            log.exception("tool handler failed")
+            log.exception("tool handler failed: %s", label)
             return None
 
     @staticmethod
