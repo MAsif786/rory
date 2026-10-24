@@ -1,5 +1,6 @@
 """Routing: one fixed order. Reads Decision and results only - it imports no NLU code."""
 from app import replies
+from app.format import tidy
 from app.core.context import ActiveSession, ContextStore, Pending, Repeat
 from app.core.dispatcher import Dispatcher
 from app.core.registry import Registry
@@ -67,10 +68,11 @@ class Bot:
 
     async def respond(self, chat_id: str, text: str) -> str:
         """handle(), plus a fallback for messages nothing understood (which changes if it is repeated)."""
-        if reply := await self.handle(chat_id, text):
-            return reply
-        last = self.store.get(chat_id).repeat
-        return replies.not_understood(self.registry, last.count if last else 1, text)
+        reply = await self.handle(chat_id, text)
+        if not reply:
+            last = self.store.get(chat_id).repeat
+            reply = replies.not_understood(self.registry, last.count if last else 1, text)
+        return tidy(reply)
 
     async def _run(self, chat_id: str, feature: str, args: dict, ctx: Context,
                    key: str = "", again: Repeat | None = None) -> str:

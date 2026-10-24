@@ -9,12 +9,9 @@ import re
 from app.core.registry import Registry
 from app.core.schemas import FeatureSpec
 from app.core.tool import Tool
+from app.format import tip  # noqa: F401  (re-exported: tools and pages share one hint style)
 
 MAX_EXAMPLES = 3
-
-
-def tip(text: str) -> str:
-    return f"💡 {text}"
 
 
 def _examples(tool: Tool) -> list[str]:
