@@ -182,7 +182,8 @@ def test_find_url_keeps_closing_bracket_of_wikipedia_titles():
 
 # --- news & web search ------------------------------------------------------------------------------------------------
 RSS = """<?xml version="1.0"?><rss version="2.0"><channel><title>x</title>
-<item><title>Rover finds ice on Mars - Space Daily</title><link>https://news.example/1</link><pubDate>{when}</pubDate></item>
+<item><title>Rover finds ice on Mars - Space Daily</title><link>https://news.example/1</link><pubDate>{when}</pubDate>
+<description>&lt;ol&gt;&lt;li&gt;&lt;a href="https://x/1"&gt;Rover finds ice on Mars&lt;/a&gt;&amp;nbsp;&amp;nbsp;&lt;font color="#6f6f6f"&gt;Space Daily&lt;/font&gt;&lt;/li&gt;&lt;li&gt;&lt;a href="https://x/2"&gt;NASA confirms subsurface water ice near the Martian equator&lt;/a&gt;&amp;nbsp;&amp;nbsp;&lt;font color="#6f6f6f"&gt;Reuters&lt;/font&gt;&lt;/li&gt;&lt;li&gt;&lt;a href="https://x/3"&gt;Ice on Mars&lt;/a&gt;&amp;nbsp;&amp;nbsp;&lt;font color="#6f6f6f"&gt;BBC&lt;/font&gt;&lt;/li&gt;&lt;/ol&gt;</description></item>
 <item><title>Second story - Other Source</title><link>https://news.example/2</link><pubDate>{when}</pubDate></item></channel></rss>"""
 
 
@@ -196,13 +197,16 @@ def rss_bot():
 async def test_news_headlines_and_topic():
     bot, http = rss_bot()
     out = await say(bot, "today's news")
-    assert "📰 *Top headlines*" in out and "1️⃣ *Rover finds ice on Mars*" in out and "_Space Daily · 3h ago_" in out
+    assert "📰 *Top headlines* — " in out and "_Top 2 stories from Google News_" in out          # dated title + one-line description
+    assert "1️⃣ *Rover finds ice on Mars*" in out and "_Space Daily · 3h ago_" in out
+    assert "↳ NASA confirms subsurface water ice near the Martian equator (Reuters)" in out     # short description from related coverage
+    assert "_Also: BBC_" in out and "2️⃣ *Second story*" in out
     assert "https://" not in out and "Reply *1*–*2* to get a link" in out          # links are sent on request, not listed
     assert "q" not in http.calls[0][1]                                          # the top-stories feed
     link = await say(bot, "2")                                                   # reply with a number to open that story
     assert link.startswith("🔗 *Second story*") and "https://news.example/2" in link and len(http.calls) == 1   # no new fetch
     out = await say(bot, "news about mars")
-    assert "📰 *News: mars*" in out and http.calls[-1][1]["q"] == "mars when:2d"
+    assert "📰 *News: mars* — " in out and "Latest 2 stories about mars (last 2 days)" in out and http.calls[-1][1]["q"] == "mars when:2d"
     await say(bot, "pakistan news")
     assert http.calls[-1][1]["q"] == "pakistan when:2d"
     await say(bot, "what about cricket")                                         # follow-up keeps the news feature

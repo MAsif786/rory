@@ -1,5 +1,7 @@
 """News headlines from Google News (RSS, no key): today's top stories, or news about a topic."""
+import html
 import os
+import re
 import time
 import xml.etree.ElementTree as ET
 from datetime import datetime, timezone
@@ -7,7 +9,7 @@ from email.utils import parsedate_to_datetime
 
 from app.core.schemas import Followup, Input, UserError
 from app.core.tool import Tool
-from app.format import numbered, tip
+from app.format import num, tip
 
 tool = Tool("news", title="News", emoji="📰", description="Today's headlines, or news about any topic")
 
@@ -31,6 +33,23 @@ def _ago(pub: str) -> str:
     return f"{max(int(secs // 60), 1)}m ago" if secs < 3600 else f"{int(secs // 3600)}h ago" if secs < 86400 else f"{int(secs // 86400)}d ago"
 
 
+_RELATED = re.compile(r'<li><a href="[^"]*"[^>]*>(.*?)</a>(?:&nbsp;|\s)*(?:<font[^>]*>(.*?)</font>)?</li>', re.S)
+
+
+def _related(description: str, title: str) -> list[tuple[str, str]]:
+    """[(headline, outlet)] of other outlets' coverage of the same story, from the feed's description HTML."""
+    out = []
+    for head, outlet in _RELATED.findall(description or ""):
+        head, outlet = html.unescape(re.sub(r"<[^>]+>", "", head)).strip(), html.unescape(outlet or "").strip()
+        if head and head.lower() != title.lower() and outlet:
+            out.append((head, outlet))
+    return out
+
+
+def _short(text: str, n: int) -> str:
+    return text if len(text) <= n else text[: n - 1].rsplit(" ", 1)[0] + "…"
+
+
 async def fetch(http, topic: str | None) -> list[dict]:
     gl, ceid = _edition()
     base = "https://news.google.com/rss"
@@ -48,8 +67,9 @@ async def fetch(http, topic: str | None) -> list[dict]:
     out = []
     for it in items[:MAX_ITEMS]:
         title, source = (it.findtext("title") or "").rsplit(" - ", 1) if " - " in (it.findtext("title") or "") else (it.findtext("title") or "", "")
+        related = _related(it.findtext("description") or "", title.strip())
         out.append({"title": title.strip(), "source": source.strip() or (it.findtext("source") or ""), "link": it.findtext("link") or "",
-                    "ago": _ago(it.findtext("pubDate") or "")})
+                    "ago": _ago(it.findtext("pubDate") or ""), "related": related})
     return out
 
 
@@ -63,10 +83,26 @@ def _remember(chat_id: str, items: list[dict]) -> None:
     _shown[chat_id] = (time.monotonic(), items)
 
 
-def format_items(heading: str, items: list[dict]) -> str:
-    """Compact numbered headlines; the (very long) Google News links are sent on request, not listed."""
-    lines = [heading, "", *numbered([(n["title"], " · ".join(x for x in (n["source"], n["ago"]) if x)) for n in items])]
-    return "\n".join([*lines, "", tip(f"Reply *1*–*{len(items)}* to get a link")])
+def _describe(n: dict) -> list[str]:
+    """A short description under the headline: what another outlet reported, and who else covered the story."""
+    lines = []
+    if n["related"]:
+        head, outlet = n["related"][0]
+        lines.append(f"     ↳ {_short(head, 100)} ({outlet})")
+        others = list(dict.fromkeys(o for _, o in n["related"][1:] if o != n["source"] and o != outlet))
+        if others:
+            lines.append("     _Also: " + ", ".join(others[:2]) + (f" +{len(others) - 2} more" if len(others) > 2 else "") + "_")
+    return lines
+
+
+def format_items(heading: str, subtitle: str, items: list[dict]) -> str:
+    """Dated title, a one-line description, then numbered headlines with a short description each.
+    The (very long) Google News links are sent on request, not listed."""
+    lines = [f"{heading} — {datetime.now():%a %d %b}", f"_{subtitle}_", ""]
+    for i, n in enumerate(items, 1):
+        meta = " · ".join(x for x in (n["source"], n["ago"]) if x)
+        lines += [f"{num(i)} *{n['title']}*", *([f"     _{meta}_"] if meta else []), *_describe(n), ""]
+    return "\n".join([*lines, tip(f"Reply *1*–*{len(items)}* to get a link")])
 
 
 def format_link(n: dict) -> str:
@@ -87,7 +123,9 @@ async def _show(ctx, topic: str | None, pick: int | None) -> str:
         if pick > len(items):
             raise UserError(f"📰 Pick a number from 1 to {len(items)}.")
         return format_link(items[pick - 1])
-    return format_items(f"📰 *News: {topic}*" if topic else "📰 *Top headlines*", items)
+    if topic:
+        return format_items(f"📰 *News: {topic}*", f"Latest {len(items)} stories about {topic} (last 2 days), newest first", items)
+    return format_items("📰 *Top headlines*", f"Top {len(items)} stories from Google News", items)
 
 
 PICK = Input(type="int", pattern="[1-9]")
