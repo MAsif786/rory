@@ -15,6 +15,7 @@ from app.core.dispatcher import Dispatcher
 from app.core.registry import Registry
 from app.core.services import Services
 from app.groups import address
+from app.inbox import Recorder
 from app.guards import KeyedLocks, RateLimiter, Seen
 from app.intent.rule_based import decide
 from app.logsetup import chat_ref, setup_logging
@@ -34,10 +35,12 @@ TOO_LONG = "✂️ That message is too long for me (max {n} characters). Could y
 
 def build_state() -> None:
     """(Re)create every piece of in-memory state. Tests call this to start clean."""
-    global services, registry, bot, limiter, seen, locks
+    global services, registry, bot, recorder, limiter, seen, locks
     services = Services()
     registry = Registry().discover()
-    bot = Bot(registry, Dispatcher(registry), decide, ContextStore(idle_ttl=settings.chat_idle_ttl, max_chats=settings.max_chats), services)
+    recorder = Recorder(settings.unmatched_path or None)
+    recorder.prune(settings.unmatched_retention_days)
+    bot = Bot(registry, Dispatcher(registry), decide, ContextStore(idle_ttl=settings.chat_idle_ttl, max_chats=settings.max_chats), services, recorder)
     limiter = RateLimiter(settings.rate_limit_max, settings.rate_limit_window)
     seen = Seen(settings.dedup_ttl)
     locks = KeyedLocks()

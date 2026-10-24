@@ -2,10 +2,10 @@
 import logging
 
 from app import replies
-from app import trace
+from app import inbox, trace
 from app.format import tidy
 from app.core.context import ActiveSession, ContextStore, Pending, Repeat
-from app.core.dispatcher import Dispatcher
+from app.core.dispatcher import GENERIC_ERROR, NETWORK_ERROR, Dispatcher
 from app.core.registry import Registry
 from app.core.schemas import Context, Continue, Finish, PassThrough
 from app.intent.decision import Decision, IntentEngine, LastTurn
@@ -18,8 +18,9 @@ GAME_WORDS = {"games", "game list", "list games", "play games", "play a game", "
 
 class Bot:
     def __init__(self, registry: Registry, dispatcher: Dispatcher, engine: IntentEngine,
-                 store: ContextStore, services=None) -> None:
+                 store: ContextStore, services=None, recorder=None) -> None:
         self.registry, self.dispatcher, self.engine, self.store, self.services = registry, dispatcher, engine, store, services
+        self.recorder = recorder                      # optional improvement inbox (app/inbox.py)
 
     async def handle(self, chat_id: str, text: str) -> str | None:
         """Returns the reply, or None when nothing matched (caller decides the fallback)."""
@@ -90,6 +91,9 @@ class Bot:
             last = self.store.get(chat_id).repeat
             trace.note(kind="fallback", feature=None)
             log.info("unmatched: %r", text[:200])          # scripts/quality_report.py --log reads these to find what to teach the bot
+            if self.recorder:
+                near = inbox.nearest_example(text, self.registry.specs())
+                self.recorder.record("unmatched", text, chat_id, nearest=near[0] if near else None, feature=near[1] if near else None)
             reply = replies.not_understood(self.registry, last.count if last else 1, text)
         return tidy(reply)
 
@@ -97,6 +101,8 @@ class Bot:
                    key: str = "", again: Repeat | None = None) -> str:
         run = await self.dispatcher.run_feature(feature, args, ctx)
         trace.note(kind="answer" if run.ok else "error", feature=feature)
+        if self.recorder and not run.ok and run.reply in (GENERIC_ERROR, NETWORK_ERROR):   # the tool failed, not the user's input
+            self.recorder.record("tool_error", ctx.text, ctx.chat_id, feature=feature, note="network" if run.reply == NETWORK_ERROR else "internal")
         if run.ok and run.session:
             tool = feature.partition(".")[0]
             self.store.set_session(chat_id, ActiveSession(tool, run.session.state))
