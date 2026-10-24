@@ -24,7 +24,8 @@ class FakeHttp:
         self.calls.append((url, params))
         for fragment, body in self.routes.items():
             if fragment in url:
-                return SimpleNamespace(raise_for_status=lambda: None, json=lambda b=body: b)
+                text = body if isinstance(body, str) else ""
+                return SimpleNamespace(raise_for_status=lambda: None, json=lambda b=body: b, text=text)
         raise httpx.ConnectError(f"no route for {url}")
 
 
@@ -177,3 +178,50 @@ def test_find_url_keeps_closing_bracket_of_wikipedia_titles():
     from tools.link.linkpeek import find_url
     assert find_url("https://en.wikipedia.org/wiki/Python_(programming_language)") == "https://en.wikipedia.org/wiki/Python_(programming_language)"
     assert find_url("see (https://example.com/a).") == "https://example.com/a"
+
+
+# --- news & web search ------------------------------------------------------------------------------------------------
+RSS = """<?xml version="1.0"?><rss version="2.0"><channel><title>x</title>
+<item><title>Rover finds ice on Mars - Space Daily</title><link>https://news.example/1</link><pubDate>{when}</pubDate></item>
+<item><title>Second story - Other Source</title><link>https://news.example/2</link><pubDate>{when}</pubDate></item></channel></rss>"""
+
+
+def rss_bot():
+    from datetime import datetime, timedelta, timezone
+    from email.utils import format_datetime
+    body = RSS.format(when=format_datetime(datetime.now(timezone.utc) - timedelta(hours=3)))
+    return make_bot({"news.google.com": body})
+
+
+async def test_news_headlines_and_topic():
+    bot, http = rss_bot()
+    out = await say(bot, "today's news")
+    assert "📰 *Top headlines*" in out and "1. *Rover finds ice on Mars*" in out and "Space Daily · 3h ago" in out
+    assert "q" not in http.calls[0][1]                                          # the top-stories feed
+    out = await say(bot, "news about mars")
+    assert "📰 *News: mars*" in out and http.calls[-1][1]["q"] == "mars when:2d"
+    await say(bot, "pakistan news")
+    assert http.calls[-1][1]["q"] == "pakistan when:2d"
+    await say(bot, "what about cricket")                                         # follow-up keeps the news feature
+    assert http.calls[-1][1]["q"] == "cricket when:2d"
+
+
+async def test_news_bad_feed_is_friendly():
+    bot, _ = make_bot({"news.google.com": "<not xml"})
+    assert "couldn't read the news feed" in await say(bot, "latest news")
+
+
+async def test_news_is_not_triggered_by_small_talk(bot):
+    for text in ("good news", "that is bad news", "no news"):
+        assert "📰" not in (await say(bot, text) or "")
+
+
+async def test_web_search_needs_a_key_then_returns_results(monkeypatch):
+    bot, http = make_bot({"customsearch": {"items": [{"title": "Best Pizza", "snippet": "Top pizza places", "link": "https://pizza.example"}]}})
+    monkeypatch.delenv("GOOGLE_API_KEY", raising=False)
+    assert "isn't set up yet" in await say(bot, "google best pizza")
+    monkeypatch.setenv("GOOGLE_API_KEY", "k")
+    monkeypatch.setenv("GOOGLE_CSE_ID", "cx")
+    out = await say(bot, "search for pizza in lahore")
+    assert "1. *Best Pizza*" in out and "https://pizza.example" in out
+    assert http.calls[-1][1]["q"] == "pizza in lahore" and http.calls[-1][1]["num"] == 5

@@ -28,9 +28,10 @@ Send *help* in chat to see this list, or *help <tool>* for details.
 | Wikipedia · Movies · Books · Countries | `who is Einstein` · `movie Inception` · `who wrote Dune` · `capital of France` |
 | GitHub · IP lookup · Link preview | `repo tiangolo/fastapi` · `8.8.8.8` · paste any URL, then `tech` / `security` / `links` |
 | Quran | `2:255` · `ayat al kursi in urdu` · `verses about patience` · `surah rahman` · `tafsir 2:255` |
+| News · Web search | `today's news` · `news about cricket` · `google best pizza` (needs a Google key) |
 | Fun · Dice | `tell me a joke` · `flip a coin` · `roll 2d6` · `choose pizza or sushi` |
 | Games | `play blackjack` / `dungeon` / `guess` / `hangman` / `highlow` / `memory` / `quiz` / `rps` / `trivia` / `ttt` |
 
-Optional `.env` keys: `BOT_CONTACT`, `TMDB_API_KEY` (movie ratings), `GITHUB_TOKEN` (rate limits).
+Optional `.env` keys: `BOT_CONTACT`, `TMDB_API_KEY` (movie ratings), `GITHUB_TOKEN` (rate limits), `NEWS_COUNTRY` (news edition, e.g. `PK`), `GOOGLE_API_KEY` + `GOOGLE_CSE_ID` (web search).
 
 The earlier full version (tools, intent engines, games) lives on the `modular-architecture` branch.
