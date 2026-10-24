@@ -135,3 +135,19 @@ async def test_repeated_unknown_message_gets_a_different_fallback(repeat_bot):
     first = await repeat_bot.respond("c", "blah blah")
     second = await repeat_bot.respond("c", "blah blah")
     assert first.startswith("🤔 I didn't get that.") and second.startswith("🤔 Still not sure")
+
+
+def test_bare_keyword_does_not_beat_a_followup():
+    from app.core.schemas import Followup, Input
+    from app.core.tool import Tool
+    from app.intent.decision import LastTurn
+
+    t = Tool("feed")
+
+    @t.feature("list", phrases=["list"], keywords=["link"], examples=["list"], inputs={"pick": Input(type="int", pattern="[1-9]")},
+               followups=[Followup(phrases=["link {pick}"], overrides=["pick"])])
+    async def list_(ctx, pick): ...
+
+    specs = [f.spec for f in t.features.values()]
+    assert decide("link 2", specs, LastTurn("feed.list", {"pick": None})).kind == "followup"      # follow-up wins over the keyword
+    assert decide("link 2", specs, None).kind == "match"                                          # no context: the keyword is used

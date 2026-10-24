@@ -55,18 +55,22 @@ def decide(text: str, specs: list[FeatureSpec], last: LastTurn | None = None) ->
             continue
         if best is None or rank > best[0]:
             best = (rank, spec, args)
+    if best and best[0][0] == 1 and (fu := _followup(raw, specs, last)):
+        return fu                       # a bare keyword ("link") is weaker than a follow-up to the last answer ("link 2")
     if best:
         _, spec, args = best
         missing = [n for n, i in spec.inputs.items() if i.required and not args.get(n)]
         if missing:
             return Decision("clarify", spec.full_name, args, missing, spec.inputs[missing[0]].ask or f"Which {missing[0]}?")
         return Decision("match", spec.full_name, args)
+    return _followup(raw, specs, last) or Decision("none")
 
-    if last:
-        spec = next((s for s in specs if s.full_name == last.feature), None)
-        for fu in spec.followups if spec else ():
-            hit = _phrase_match(raw, fu.phrases, spec.inputs)
-            if hit:
-                args = {**last.args, **{k: v for k, v in hit[0].items() if k in fu.overrides}, **fu.sets}
-                return Decision("followup", spec.full_name, args)
-    return Decision("none")
+
+def _followup(raw: str, specs: list[FeatureSpec], last: LastTurn | None) -> Decision | None:
+    spec = next((s for s in specs if s.full_name == last.feature), None) if last else None
+    for fu in spec.followups if spec else ():
+        hit = _phrase_match(raw, fu.phrases, spec.inputs)
+        if hit:
+            args = {**last.args, **{k: v for k, v in hit[0].items() if k in fu.overrides}, **fu.sets}
+            return Decision("followup", spec.full_name, args)
+    return None
