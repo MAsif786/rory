@@ -35,6 +35,14 @@ def fresh_module_caches():
 
 
 @pytest.fixture(autouse=True)
+def fresh_webhook_state(request):
+    """The webhook keeps a rate limiter, duplicate memory and chat state in module globals; tests that use it start clean."""
+    if request.module.__name__ in {"tests.test_webhook", "tests.test_phase0"}:
+        from app import main
+        main.reset_guards()
+
+
+@pytest.fixture(autouse=True)
 def fresh_greeting_memory():
     """The greetings tool remembers (in memory) who it greeted recently; every test starts with a clean slate."""
     from tools.greetings import tool as greetings

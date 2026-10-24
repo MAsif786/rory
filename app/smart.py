@@ -2,6 +2,7 @@
 import logging
 
 from app import replies
+from app import trace
 from app.format import tidy
 from app.core.context import ActiveSession, ContextStore, Pending, Repeat
 from app.core.dispatcher import Dispatcher
@@ -28,9 +29,11 @@ class Bot:
 
         # 0. menu and help always work, even mid-game (the game stays active)
         if command in MENU_WORDS or command == "help" or command.startswith("help "):
+            trace.note(kind="help", feature=None)
             return replies.home_menu(self.registry) if command in MENU_WORDS else replies.help_for(self.registry, command[4:])
 
         if " ".join(command.rstrip(".!?").split()) in GAME_WORDS:
+            trace.note(kind="help", feature=None)
             return replies.games_menu(self.registry)
 
         # 1. active game (stop/quit always ends it)
@@ -38,6 +41,7 @@ class Bot:
             if word in STOP_WORDS:
                 self.store.set_session(chat_id, None)
                 return "Game ended."
+            trace.note(kind="game", feature=f"{chat.session.tool}.session")
             out = await self.dispatcher.run_session(chat.session.tool, chat.session.state, text, ctx)
             if isinstance(out, Continue):
                 self.store.set_session(chat_id, ActiveSession(chat.session.tool, out.state))
@@ -49,6 +53,7 @@ class Bot:
 
         # 2. direct commands
         if command == "ping":
+            trace.note(kind="command", feature=None)
             return "pong 🏓"
 
         # 3. the bot asked a question: this message is the answer, unless it is clearly a different request
@@ -68,10 +73,12 @@ class Bot:
             spec = self.registry.spec(d.feature)
             if again and again.feature == d.feature and again.reply and spec and spec.repeat == "reuse":
                 self.store.set_repeat(chat_id, Repeat(key, d.feature, again.reply, again.count + 1))
+                trace.note(kind="repeat", feature=d.feature)
                 return replies.repeated(again.reply, again.count + 1)
             return await self._run(chat_id, d.feature, d.args, ctx, key, again)
         if d.kind == "clarify":
             self.store.set_pending(chat_id, Pending(d.feature, d.args, d.missing))
+            trace.note(kind="clarify", feature=d.feature)
             return d.question
         self.store.set_repeat(chat_id, Repeat(key, None, None, again.count + 1 if again else 1))
         return None
@@ -81,6 +88,7 @@ class Bot:
         reply = await self.handle(chat_id, text)
         if not reply:
             last = self.store.get(chat_id).repeat
+            trace.note(kind="fallback", feature=None)
             log.info("unmatched: %r", text[:200])          # scripts/quality_report.py --log reads these to find what to teach the bot
             reply = replies.not_understood(self.registry, last.count if last else 1, text)
         return tidy(reply)
@@ -88,6 +96,7 @@ class Bot:
     async def _run(self, chat_id: str, feature: str, args: dict, ctx: Context,
                    key: str = "", again: Repeat | None = None) -> str:
         run = await self.dispatcher.run_feature(feature, args, ctx)
+        trace.note(kind="answer" if run.ok else "error", feature=feature)
         if run.ok and run.session:
             tool = feature.partition(".")[0]
             self.store.set_session(chat_id, ActiveSession(tool, run.session.state))
