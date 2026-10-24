@@ -2,6 +2,10 @@
 
 Format:  <emoji> *Title*  →  blank line  →  body  →  blank line  →  optional "💡" hint.
 """
+import difflib
+import random
+import re
+
 from app.core.registry import Registry
 from app.core.schemas import FeatureSpec
 from app.core.tool import Tool
@@ -38,8 +42,42 @@ def home_menu(registry: Registry) -> str:
     return "\n".join(lines)
 
 
-def not_understood(registry: Registry) -> str:
-    """The fallback when nothing matched: show real examples from the installed tools."""
+def repeated(reply: str, count: int) -> str:
+    """The same lookup asked again within a minute: reuse the answer (no new API call) instead of repeating the work."""
+    if count == 2:
+        return f"🔁 Same as a moment ago:\n\n{reply}"
+    return "😄 You've asked that a few times — nothing has changed. Anything else I can help with?"
+
+
+ACKS = {"super", "nice", "cool", "great", "awesome", "wow", "good", "amazing", "perfect", "excellent", "wonderful", "fine", "ok", "okay",
+        "k", "kk", "lol", "lmao", "haha", "hahaha", "yes", "yeah", "yep", "yup", "sure", "alright", "right", "hmm", "hmmm", "oh", "ohh",
+        "ah", "aha", "mashallah", "alhamdulillah", "shabash", "acha", "theek hai", "no", "nope", "nah", "huh", "what", "why", "test",
+        "testing", "👍", "🙏", "😂", "🙂", "😊"}
+ACK_REPLIES = ["😊 Glad to hear it! Ask me anything else — send *help* for ideas.", "👍 Anytime! Send *help* if you want ideas.",
+               "🙂 I'm here whenever you need something. Send *help* to see what I can do."]
+
+
+def _suggestion(registry: Registry, text: str) -> str | None:
+    """The installed example closest to what was typed (a typo or a half-remembered phrase), if there is a close one."""
+    wanted = " ".join(text.lower().split())
+    examples = {ex.lower(): ex for s in registry.specs() for ex in s.examples}
+    close = difflib.get_close_matches(wanted, list(examples), n=1, cutoff=0.7)
+    return examples[close[0]] if close else None
+
+
+def not_understood(registry: Registry, times: int = 1, text: str = "") -> str:
+    """The fallback when nothing matched. It tries to be useful: acknowledge small talk, suggest a close example for a
+    typo, offer a Wikipedia lookup for a short unknown word, or show real examples. Asked again: say so, don't repeat."""
+    clean = " ".join(re.sub(r"[^\w\s👍🙏😂🙂😊]", "", text.lower()).split())
+    if times > 1:
+        return "🤔 Still not sure what you mean. Try rephrasing, or send *help* to see what I can do."
+    if clean in ACKS:
+        return random.choice(ACK_REPLIES)
+    if close := _suggestion(registry, text):
+        return f"🤔 I didn't get that. Did you mean _{close}_?"
+    if 0 < len(clean.split()) <= 3 and clean.replace(" ", "").isalpha() and "wiki" in registry.tools:
+        return (f"🤔 I don't know *{clean}* yet.\n\n"
+                + tip(f"Send _tell me about {clean}_ to look it up on Wikipedia, or *help* to see what I can do"))
     answers = [t for t in registry.tools.values() if any(f.spec.kind == "answer" for f in t.features.values())]
     examples = [ex for t in answers for ex in _examples(t)[:1]][:4]
     hint = ("Try " + " · ".join(f"_{e}_" for e in examples) + " — or send *menu*") if examples else "Send *menu* to see what I can do"

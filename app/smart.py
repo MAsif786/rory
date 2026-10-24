@@ -1,6 +1,6 @@
 """Routing: one fixed order. Reads Decision and results only - it imports no NLU code."""
 from app import replies
-from app.core.context import ActiveSession, ContextStore, Pending
+from app.core.context import ActiveSession, ContextStore, Pending, Repeat
 from app.core.dispatcher import Dispatcher
 from app.core.registry import Registry
 from app.core.schemas import Context, Continue, Finish, PassThrough
@@ -50,19 +50,37 @@ class Bot:
             return await self._run(chat_id, p.feature, {**p.args, p.missing[0]: text.strip()}, ctx)
 
         # 4. intent engine
+        key, last = " ".join(word.rstrip(".!?؟ ").split()), chat.repeat
+        again = last if last and last.text == key else None          # the same message, sent again within a minute
         d: Decision = self.engine(text, self.registry.specs(), chat.last_turn)
         if d.kind in ("match", "followup"):
-            return await self._run(chat_id, d.feature, d.args, ctx)
+            spec = self.registry.spec(d.feature)
+            if again and again.feature == d.feature and again.reply and spec and spec.repeat == "reuse":
+                self.store.set_repeat(chat_id, Repeat(key, d.feature, again.reply, again.count + 1))
+                return replies.repeated(again.reply, again.count + 1)
+            return await self._run(chat_id, d.feature, d.args, ctx, key, again)
         if d.kind == "clarify":
             self.store.set_pending(chat_id, Pending(d.feature, d.args, d.missing))
             return d.question
+        self.store.set_repeat(chat_id, Repeat(key, None, None, again.count + 1 if again else 1))
         return None
 
-    async def _run(self, chat_id: str, feature: str, args: dict, ctx: Context) -> str:
+    async def respond(self, chat_id: str, text: str) -> str:
+        """handle(), plus a fallback for messages nothing understood (which changes if it is repeated)."""
+        if reply := await self.handle(chat_id, text):
+            return reply
+        last = self.store.get(chat_id).repeat
+        return replies.not_understood(self.registry, last.count if last else 1, text)
+
+    async def _run(self, chat_id: str, feature: str, args: dict, ctx: Context,
+                   key: str = "", again: Repeat | None = None) -> str:
         run = await self.dispatcher.run_feature(feature, args, ctx)
         if run.ok and run.session:
             tool = feature.partition(".")[0]
             self.store.set_session(chat_id, ActiveSession(tool, run.session.state))
         elif run.ok:
             self.store.set_last_turn(chat_id, LastTurn(feature, run.args))
+            if key:
+                count = again.count + 1 if again and again.feature == feature else 1
+                self.store.set_repeat(chat_id, Repeat(key, feature, run.reply, count))
         return run.reply

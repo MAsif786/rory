@@ -32,7 +32,7 @@ async def _get(http, path: str, **params):
 
 
 @tool.feature(
-    "search", description="Search GitHub repositories by name or topic",
+    "search", repeat="reuse", description="Search GitHub repositories by name or topic",
     phrases=["github {query}", "search github for {query}", "github repos for {query}", "github repos about {query}",
              "find repos for {query}", "gh {query}"],
     examples=["github fastapi", "search github for telegram bot"],
@@ -51,7 +51,7 @@ async def search(ctx, query):
 
 
 @tool.feature(
-    "repo", description="Details of a GitHub repository (stats, languages, topics, latest release)",
+    "repo", repeat="reuse", description="Details of a GitHub repository (stats, languages, topics, latest release)",
     phrases=["repo {repo}", "the repo {repo}", "github {repo}", "repository {repo}", "gh repo {repo}"],
     keywords=["repo", "repository"],
     examples=["repo tiangolo/fastapi", "github psf/requests"],

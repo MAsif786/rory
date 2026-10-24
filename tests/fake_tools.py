@@ -44,3 +44,21 @@ tool = Tool("boom")
 async def go(ctx):
     raise RuntimeError("secret internal detail")
 '''
+
+
+LOOKUP = '''
+from app.core.tool import Tool
+
+tool = Tool("lookup")
+calls = {"n": 0}
+
+@tool.feature("price", phrases=["price of gold"], examples=["price of gold"], repeat="reuse")
+async def price(ctx):
+    calls["n"] += 1
+    return f"gold #{calls['n']}"
+
+@tool.feature("roll", phrases=["roll it"], examples=["roll it"])
+async def roll(ctx):
+    calls["n"] += 1
+    return f"rolled #{calls['n']}"
+'''

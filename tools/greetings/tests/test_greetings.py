@@ -38,9 +38,27 @@ async def test_greeting_again_changes_tone_and_drops_the_hint(bot, monkeypatch):
     at(monkeypatch, 9)
     await bot.handle("c", "hello")
     again = await bot.handle("c", "hey")
-    assert "again" in again.lower() or "back" in again.lower()
-    assert "*help*" not in again
+    assert again in mod.SAME and "*help*" not in again
     assert "I'm Rory" in await bot.handle("other chat", "hello")                   # per chat
+
+
+async def test_repeating_the_same_greeting_is_noticed(bot, monkeypatch):
+    at(monkeypatch, 0)
+    first = await bot.handle("c", "Morning")
+    second = await bot.handle("c", "Morning")               # exactly the chat from the bug report
+    third = await bot.handle("c", "good morning")
+    assert first.startswith("Good morning!")
+    assert any(w in second.lower() for w in ("already", "again")) and "It's night here" not in second
+    assert any(w in third.lower() for w in ("already", "again"))
+    assert (await bot.handle("c", "hello")) in mod.AGAIN                # a different greeting soon after: "again"
+    assert (await bot.handle("c", "hello")) in mod.SAME                 # the very same one repeated
+
+
+async def test_repeated_salam(bot):
+    first = await bot.handle("c", "salam")
+    assert "*help*" in first
+    again = await bot.handle("c", "assalamualaikum")
+    assert "again" in again and "*help*" not in again
 
 
 async def test_bye_resets_so_the_next_hello_is_a_fresh_one(bot, monkeypatch):

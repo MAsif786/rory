@@ -24,7 +24,7 @@ bot = Bot(registry, Dispatcher(registry), decide, ContextStore(), services)
 
 
 async def reply_for(chat_id: str, text: str) -> str:
-    return await bot.handle(chat_id, text) or replies.not_understood(registry)
+    return await bot.respond(chat_id, text)
 
 
 @app.post("/webhook")

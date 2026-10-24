@@ -59,6 +59,7 @@ class FeatureSpec(Schema):
     negatives: tuple[str, ...] = ()
     inputs: dict[str, Input] = Field(default_factory=dict)
     followups: tuple[Followup, ...] = ()
+    repeat: Literal["rerun", "reuse"] = "rerun"   # asked again within a minute: run again, or reuse the last answer (lookups)
 
     @property
     def full_name(self) -> str:

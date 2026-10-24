@@ -21,11 +21,11 @@ class Tool:
     def feature(self, name: str, *, description: str = "", kind: Literal["answer", "session"] = "answer",
                 phrases: list[str] = (), keywords: list[str] = (), examples: list[str] = (),
                 negatives: list[str] = (), inputs: dict[str, Input] | None = None,
-                followups: list[Followup] = ()) -> Callable[[Handler], Handler]:
+                followups: list[Followup] = (), repeat: Literal["rerun", "reuse"] = "rerun") -> Callable[[Handler], Handler]:
         def register(fn: Handler) -> Handler:
             spec = FeatureSpec(tool=self.name, name=name, description=description, kind=kind, phrases=tuple(phrases),
                                keywords=tuple(keywords), examples=tuple(examples), negatives=tuple(negatives),
-                               inputs=dict(inputs or {}), followups=tuple(followups))
+                               inputs=dict(inputs or {}), followups=tuple(followups), repeat=repeat)
             self.features[name] = Feature(spec, fn)
             return fn
         return register

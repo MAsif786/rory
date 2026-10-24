@@ -11,7 +11,7 @@ TITLE = r"[^\n]{1,80}"
 
 
 @tool.feature(
-    "info", description="Movie info (ratings with a TMDB key, else a Wikipedia summary)",
+    "info", repeat="reuse", description="Movie info (ratings with a TMDB key, else a Wikipedia summary)",
     phrases=["movie {title}", "film {title}", "the movie {title}", "the film {title}", "{title} movie", "{title} film",
              "tell me about the movie {title}", "tell me about the film {title}", "is {title} a good movie", "is {title} a good film",
              "is {title} worth watching", "info on the movie {title}"],

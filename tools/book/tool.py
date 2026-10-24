@@ -8,7 +8,7 @@ TITLE = r"[^\n]{1,80}"
 
 
 @tool.feature(
-    "info", description="Book info from Open Library (who wrote Dune, book 1984)",
+    "info", repeat="reuse", description="Book info from Open Library (who wrote Dune, book 1984)",
     phrases=["book {title}", "the book {title}", "novel {title}", "who wrote {title}", "who is the author of {title}",
              "author of {title}", "tell me about the book {title}", "{title} book", "{title} novel"],
     keywords=["novel", "isbn"],

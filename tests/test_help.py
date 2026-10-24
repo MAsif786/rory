@@ -68,3 +68,42 @@ async def test_empty_registry(make_tools):
 async def test_fallback_uses_installed_examples(bot):
     out = replies.not_understood(bot.registry)
     assert out.startswith("🤔 I didn't get that.") and "_weather in lahore_" in out and "*menu*" in out
+
+
+# --- unknown words -------------------------------------------------------------------------------------------------
+@pytest.fixture
+def fb_bot(make_tools):
+    from tools.wiki.tool import tool as wiki
+    root, pkg = make_tools({"weather": WEATHER})
+    reg = Registry().discover(root, pkg)
+    reg.add(wiki, "wiki")
+    return Bot(reg, Dispatcher(reg), decide, ContextStore())
+
+
+async def respond(bot, text):
+    return await bot.respond("c", text)
+
+
+@pytest.mark.parametrize("text", ["super", "Nice!", "ok", "lol", "👍", "mashallah"])
+async def test_small_talk_is_acknowledged_not_rejected(fb_bot, text):
+    out = await respond(fb_bot, text)
+    assert "didn't get that" not in out and "help" in out
+
+
+async def test_typo_gets_a_did_you_mean(fb_bot):
+    assert "Did you mean _weather in lahore_?" in await respond(fb_bot, "wether in lahore")
+
+
+async def test_short_unknown_word_offers_a_wikipedia_lookup(fb_bot):
+    out = await respond(fb_bot, "zorblax")
+    assert "I don't know *zorblax*" in out and "tell me about zorblax" in out
+
+
+async def test_long_unknown_sentence_shows_real_examples(fb_bot):
+    out = await respond(fb_bot, "the quick brown fox jumps over the lazy dog today")
+    assert out.startswith("🤔 I didn't get that.") and "_weather in lahore_" in out
+
+
+async def test_asking_the_unknown_again_changes_the_reply(fb_bot):
+    first, second = await respond(fb_bot, "zorblax"), await respond(fb_bot, "zorblax")
+    assert "I don't know" in first and second.startswith("🤔 Still not sure")

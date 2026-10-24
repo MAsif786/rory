@@ -1,6 +1,6 @@
 import pytest
 
-from app.core.context import SESSION_TTL, TURN_TTL, ContextStore
+from app.core.context import REPEAT_TTL, SESSION_TTL, TURN_TTL, ContextStore
 from app.core.dispatcher import Dispatcher
 from app.core.registry import Registry
 from app.intent.rule_based import decide
@@ -97,3 +97,41 @@ async def test_session_idle_timer_resets_on_activity(bot, clock):
 
 async def test_help_lists_examples(bot):
     assert "weather in lahore" in await say(bot, "help")
+
+
+# --- repeated messages ----------------------------------------------------------------------------------------------
+@pytest.fixture
+def repeat_bot(make_tools, clock):
+    root, pkg = make_tools({"lookup": ft.LOOKUP})
+    reg = Registry().discover(root, pkg)
+    return Bot(reg, Dispatcher(reg), decide, ContextStore(clock))
+
+
+async def test_repeated_lookup_reuses_the_answer_without_running_again(repeat_bot):
+    assert await say(repeat_bot, "price of gold") == "gold #1"
+    again = await say(repeat_bot, "Price of  gold!")                        # same message, however it is typed
+    assert "Same as a moment ago" in again and "gold #1" in again          # reused: the handler did not run again
+    third = await say(repeat_bot, "price of gold")
+    assert "a few times" in third and "gold #" not in third
+
+
+async def test_repeated_lookup_runs_again_after_a_minute(repeat_bot, clock):
+    await say(repeat_bot, "price of gold")
+    clock.t = REPEAT_TTL + 1
+    assert await say(repeat_bot, "price of gold") == "gold #2"
+
+
+async def test_random_features_always_rerun(repeat_bot):
+    assert [await say(repeat_bot, "roll it") for _ in range(3)] == ["rolled #1", "rolled #2", "rolled #3"]
+
+
+async def test_a_different_message_is_not_a_repeat(repeat_bot):
+    await say(repeat_bot, "price of gold")
+    await say(repeat_bot, "roll it")
+    assert await say(repeat_bot, "price of gold") == "gold #3"             # something else was asked in between
+
+
+async def test_repeated_unknown_message_gets_a_different_fallback(repeat_bot):
+    first = await repeat_bot.respond("c", "blah blah")
+    second = await repeat_bot.respond("c", "blah blah")
+    assert first.startswith("🤔 I didn't get that.") and second.startswith("🤔 Still not sure")

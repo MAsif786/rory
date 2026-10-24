@@ -31,7 +31,7 @@ def _range(day: Day) -> str:
 
 
 @tool.feature(
-    "current", description="Current weather + 3-day outlook",
+    "current", repeat="reuse", description="Current weather + 3-day outlook",
     phrases=["weather in {place}", "weather {place}", "the weather in {place}", "what's the weather in {place}",
              "how is the weather in {place}", "temperature in {place}", "is it raining in {place}",
              "is it hot in {place}", "is it cold in {place}"],
@@ -53,7 +53,7 @@ async def current(ctx, place):
 
 
 @tool.feature(
-    "forecast", description="5-day forecast with rain chance",
+    "forecast", repeat="reuse", description="5-day forecast with rain chance",
     phrases=["forecast for {place}", "forecast in {place}", "forecast {place}", "{place} forecast",
              "weather forecast for {place}", "weather next week in {place}", "weather tomorrow in {place}",
              "will it rain in {place}", "will it rain tomorrow in {place}"],

@@ -12,7 +12,7 @@ NAME = r"[^\d\n]{2,40}"
 
 
 @tool.feature(
-    "facts", description="Capital, population, languages and currency of a country",
+    "facts", repeat="reuse", description="Capital, population, languages and currency of a country",
     phrases=["country {country}", "the country {country}", "capital of {country}", "what is the capital of {country}",
              "what's the capital of {country}", "population of {country}", "what is the population of {country}",
              "facts about {country}", "tell me about the country {country}", "{country} country facts", "{country} facts"],

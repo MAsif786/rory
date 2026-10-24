@@ -128,7 +128,7 @@ async def _section(name: str, r: linkpeek.Report) -> str:
 
 
 @tool.feature(
-    "peek", description="Deep page preview: summary, metadata, tech & security. Add links/contacts/tech/security/text/all for a section",
+    "peek", repeat="reuse", description="Deep page preview: summary, metadata, tech & security. Add links/contacts/tech/security/text/all for a section",
     phrases=["{url}", "link {url}", "peek {url}", "preview {url}", "summarize {url}", "summarise {url}", "what is {url}",
              "open {url}", "{section} of {url}", "{section} for {url}", "{url} {section}", "{section} {url}"],
     keywords=["link"],

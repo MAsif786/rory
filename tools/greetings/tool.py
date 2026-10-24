@@ -9,7 +9,7 @@ from app.core.tool import Tool
 tool = Tool("greetings", title="Greetings", emoji="👋", description="Say hi, thanks or goodbye, or ask who I am")
 
 REPEAT_WINDOW = 600                       # seconds: greet again within this and Rory says "again"
-_last: dict[str, float] = {}              # chat -> when we last greeted it (in memory, like all chat context)
+_last: dict[str, tuple[float, str]] = {}  # chat -> (when, which greeting) we last answered (in memory, like all chat context)
 HINT = "Send *help* to see what I can do."
 
 
@@ -21,13 +21,17 @@ def _now() -> datetime:
     return datetime.now()
 
 
-def _seen_recently(chat_id: str) -> bool:
+def _recall(chat_id: str, key: str) -> str:
+    """Remember this greeting and say how it relates to the last one: "" (fresh), "again" (a greeting soon after one),
+    or "same" (the very same greeting repeated)."""
     now = time.monotonic()
-    again = now - _last.get(chat_id, -REPEAT_WINDOW * 2) < REPEAT_WINDOW
+    when, last_key = _last.get(chat_id, (-REPEAT_WINDOW * 2, ""))
     if len(_last) > 1000:                 # keep memory bounded
         _last.clear()
-    _last[chat_id] = now
-    return again
+    _last[chat_id] = (now, key)
+    if now - when >= REPEAT_WINDOW:
+        return ""
+    return "same" if key == last_key else "again"
 
 
 GREET = {"morning": ["Good morning! ☀️", "Morning! ☀️ Hope your day starts well."],
@@ -35,6 +39,8 @@ GREET = {"morning": ["Good morning! ☀️", "Morning! ☀️ Hope your day star
          "evening": ["Good evening! 🌆", "Hey, good evening! 🌆"],
          "night": ["Hey, still up? 🌙", "Hello, night owl! 🌙"]}
 AGAIN = ["Hey again! 👋", "Hi again! 😄", "Back already? 👋 I'm here."]
+SAME = ["😄 You already said that! Hi again.", "We've done this one already 😄 What can I help with?",
+        "Hello hello again! 👋 Still here — what do you need?"]
 
 
 @tool.feature(
@@ -43,8 +49,8 @@ AGAIN = ["Hey again! 👋", "Hi again! 😄", "Back already? 👋 I'm here."]
              "howdy", "hiya", "heya", "greetings", "hi rory", "hello rory", "hey rory", "hi again", "hello again", "hey again"],
     examples=["hi", "hello there"])
 async def hello(ctx):
-    if _seen_recently(ctx.chat_id):
-        return random.choice(AGAIN)
+    if seen := _recall(ctx.chat_id, "hello"):
+        return random.choice(SAME if seen == "same" else AGAIN)
     return f"{random.choice(GREET[daypart(_now().hour)])} I'm Rory. {HINT}"
 
 
@@ -54,8 +60,10 @@ async def hello(ctx):
              "as salam alaykum", "aoa", "slm", "peace be upon you"],
     examples=["assalamualaikum", "salam"])
 async def salam(ctx):
-    _seen_recently(ctx.chat_id)
-    return "Wa alaikum assalam wa rahmatullahi wa barakatuh 🌙 " + HINT
+    seen = _recall(ctx.chat_id, "salam")
+    if seen == "same":
+        return "Wa alaikum assalam again 🌙 How can I help?"
+    return "Wa alaikum assalam wa rahmatullahi wa barakatuh 🌙" + ("" if seen else " " + HINT)
 
 
 @tool.feature(
@@ -64,9 +72,11 @@ async def salam(ctx):
     examples=["good morning", "good night"],
     inputs={"part": Input(required=True, pattern="morning|afternoon|evening|night")})
 async def part_greeting(ctx, part):
-    _seen_recently(ctx.chat_id)
     part = part.lower()
+    seen = _recall(ctx.chat_id, f"daypart:{part}")
     actual = daypart(_now().hour)
+    if seen == "same":
+        return random.choice([f"😄 You already wished me good {part}! Good {part} again.", f"Good {part} to you too, again! 😄"])
     if part == "night":
         return "Good night! 🌙 Sleep well."
     if part == actual or (part == "evening" and actual == "night"):
@@ -108,7 +118,7 @@ async def who_are_you(ctx):
              "khuda hafiz", "allah hafiz"],
     examples=["bye", "see you later"])
 async def bye(ctx):
-    _last.pop(ctx.chat_id, None)
+    _last.pop(ctx.chat_id, None)               # a goodbye ends the conversation, so the next hello is fresh
     return random.choice(["👋 Bye! Come back any time.", "See you soon! 👋", "Take care! 🌟"])
 
 

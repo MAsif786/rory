@@ -7,6 +7,7 @@ from app.intent.decision import LastTurn
 
 SESSION_TTL = 10 * 60
 TURN_TTL = 5 * 60
+REPEAT_TTL = 60
 
 
 @dataclass
@@ -23,10 +24,21 @@ class Pending:
 
 
 @dataclass
+class Repeat:
+    """The chat's last message and what we answered, to notice when it is sent again."""
+    text: str
+    feature: str | None            # None: nothing matched
+    reply: str | None
+    count: int = 1
+
+
+@dataclass
 class ChatContext:
     session: ActiveSession | None = None
     last_turn: LastTurn | None = None
     pending: Pending | None = None
+    repeat: Repeat | None = None
+    repeat_at: float = 0
     session_at: float = 0
     turn_at: float = 0
     pending_at: float = 0
@@ -45,7 +57,13 @@ class ContextStore:
             c.last_turn = None
         if c.pending and now - c.pending_at > TURN_TTL:
             c.pending = None
+        if c.repeat and now - c.repeat_at > REPEAT_TTL:
+            c.repeat = None
         return c
+
+    def set_repeat(self, chat_id: str, repeat: Repeat | None) -> None:
+        c = self.get(chat_id)
+        c.repeat, c.repeat_at = repeat, self.clock()
 
     def set_session(self, chat_id: str, session: ActiveSession | None) -> None:
         c = self.get(chat_id)

@@ -24,7 +24,7 @@ def _code(word: str) -> str:
 
 
 @tool.feature(
-    "convert", description="Convert an amount between currencies (also: 100 usd to eur, gbp)",
+    "convert", repeat="reuse", description="Convert an amount between currencies (also: 100 usd to eur, gbp)",
     phrases=["{amount} {base} to {quote}", "{amount} {base} in {quote}", "convert {amount} {base} to {quote}",
              "convert {amount} {base} {quote}", "convert {amount} {base} into {quote}", "how much is {amount} {base} in {quote}",
              "{base} to {quote}", "{base} in {quote}", "convert {base} to {quote}"],

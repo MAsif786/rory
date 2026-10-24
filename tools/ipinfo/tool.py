@@ -10,7 +10,7 @@ IP = r"\d{1,3}(?:\.\d{1,3}){3}"
 
 
 @tool.feature(
-    "lookup", description="Location and owner of a public IP address",
+    "lookup", repeat="reuse", description="Location and owner of a public IP address",
     phrases=["{ip}", "ip {ip}", "ipinfo {ip}", "ip address {ip}", "whois {ip}", "where is {ip}", "lookup {ip}", "look up ip {ip}"],
     examples=["8.8.8.8", "ip 1.1.1.1"],
     inputs={"ip": Input(required=True, pattern=IP, ask="🌐 Which IP address? (e.g. *8.8.8.8*)")})
