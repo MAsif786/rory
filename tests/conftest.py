@@ -26,6 +26,15 @@ def make_tools(tmp_path, monkeypatch):
 
 
 @pytest.fixture(autouse=True)
+def fresh_module_caches():
+    """Tools keep small in-memory caches (greetings seen, Quran surah list, news shown); every test starts clean."""
+    from tools.news import tool as news
+    from tools.quran import service as quran
+    news._shown.clear()
+    quran._surahs.clear()
+
+
+@pytest.fixture(autouse=True)
 def fresh_greeting_memory():
     """The greetings tool remembers (in memory) who it greeted recently; every test starts with a clean slate."""
     from tools.greetings import tool as greetings
