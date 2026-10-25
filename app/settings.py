@@ -23,6 +23,7 @@ class Settings(BaseModel):
     dedup_ttl: float = Field(300, gt=0)                     # seconds a WAHA message id is remembered (retries / double webhooks)
     chat_idle_ttl: float = Field(3600, gt=0)                # forget a chat's state after this many idle seconds
     max_chats: int = Field(10_000, ge=10)                   # hard cap on remembered chats (least recently used go first)
+    group_followup_window: float = Field(90, ge=0)          # seconds after Rory answers someone in a group during which THEIR follow-up needs no mention (0 = off)
     max_message_chars: int = Field(1000, ge=10)             # longer messages get a polite refusal instead of being processed
     max_body_bytes: int = Field(100_000, ge=1000)           # webhook request bodies above this are rejected (413) without being parsed
     webhook_hmac_key: str = ""                              # verify WAHA's X-Webhook-Hmac signature (same value as WAHA's WHATSAPP_HOOK_HMAC_KEY); "" = open

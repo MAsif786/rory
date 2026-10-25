@@ -67,6 +67,27 @@ class ContextStore:
             while self._chats and now - next(iter(self._chats.values())).last_seen > self.idle_ttl:
                 self._chats.popitem(last=False)
 
+    @staticmethod
+    def _expire(c: ChatContext, now: float) -> None:
+        if c.session and now - c.session_at > SESSION_TTL:
+            c.session = None
+        if c.last_turn and now - c.turn_at > TURN_TTL:
+            c.last_turn = None
+        if c.pending and now - c.pending_at > TURN_TTL:
+            c.pending = None
+        if c.repeat and now - c.repeat_at > REPEAT_TTL:
+            c.repeat = None
+
+    def peek(self, key: str) -> ChatContext | None:
+        """Read-only look: never creates an entry, never refreshes recency. For deciding whether to react to group chatter without
+        letting every unaddressed message in every group occupy memory."""
+        c = self._chats.get(key)
+        now = self.clock()
+        if c is None or now - c.last_seen > self.idle_ttl:
+            return None
+        self._expire(c, now)
+        return c
+
     def get(self, chat_id: str) -> ChatContext:
         now = self.clock()
         self._lookups += 1
@@ -76,14 +97,7 @@ class ContextStore:
         c.last_seen = now
         self._chats.move_to_end(chat_id)
         self._evict(now)
-        if c.session and now - c.session_at > SESSION_TTL:
-            c.session = None
-        if c.last_turn and now - c.turn_at > TURN_TTL:
-            c.last_turn = None
-        if c.pending and now - c.pending_at > TURN_TTL:
-            c.pending = None
-        if c.repeat and now - c.repeat_at > REPEAT_TTL:
-            c.repeat = None
+        self._expire(c, now)
         return c
 
     def set_repeat(self, chat_id: str, repeat: Repeat | None) -> None:

@@ -7,7 +7,7 @@ from concurrent.futures import ThreadPoolExecutor
 from app import replies
 from app import inbox, trace
 from app.format import tidy
-from app.core.context import ActiveSession, ContextStore, Pending, Repeat
+from app.core.context import TURN_TTL, ActiveSession, ContextStore, Pending, Repeat
 from app.core.dispatcher import GENERIC_ERROR, NETWORK_ERROR, Dispatcher
 from app.core.registry import Registry
 from app.core.schemas import Context, Continue, Finish, PassThrough
@@ -29,11 +29,28 @@ class Bot:
         self.registry, self.dispatcher, self.engine, self.store, self.services = registry, dispatcher, engine, store, services
         self.recorder = recorder                      # optional improvement inbox (app/inbox.py)
 
-    async def handle(self, chat_id: str, text: str) -> str | None:
+    @staticmethod
+    def person_key(chat_id: str, sender: str | None) -> str:
+        """Where follow-up state lives. A private chat is one person, so it is the chat itself. In a group each participant has their OWN
+        last answer, open question and repeat memory (Bob's question must not change what Alice's "and tomorrow" refers to), while the
+        game session stays shared by the whole group."""
+        return chat_id if not sender or sender == chat_id or not chat_id.endswith("@g.us") else f"{chat_id}|{sender}"
+
+    def expects_followup(self, chat_id: str, sender: str, text: str, window: float) -> bool:
+        """Is this unaddressed group message the SAME person following up on an answer Rory gave them within `window` seconds?
+        Only a message that exactly matches a follow-up of that answer counts ("and tomorrow", "what about karachi"); chatter never does."""
+        me = self.store.peek(self.person_key(chat_id, sender))
+        if window <= 0 or me is None or me.last_turn is None or self.store.clock() - me.turn_at > min(window, TURN_TTL):
+            return False
+        return self.engine(text, self.registry.specs(), me.last_turn).kind == "followup"
+
+    async def handle(self, chat_id: str, text: str, sender: str | None = None) -> str | None:
         """Returns the reply, or None when nothing matched (caller decides the fallback)."""
         word = text.strip().lower()
         command = word.lstrip("!/")
+        person = self.person_key(chat_id, sender)
         ctx, chat = Context(chat_id, text, self.services, self.store.clock()), self.store.get(chat_id)
+        me = self.store.get(person) if person != chat_id else chat
 
         # 0. menu and help always work, even mid-game (the game stays active)
         if command in MENU_WORDS or command == "help" or command.startswith("help "):
@@ -65,30 +82,30 @@ class Bot:
             return "pong 🏓"
 
         # 3. the bot asked a question: this message is the answer, unless it is clearly a different request
-        if chat.pending:
-            p = chat.pending
-            self.store.set_pending(chat_id, None)
+        if me.pending:
+            p = me.pending
+            self.store.set_pending(person, None)
             other = await self._decide(text, None)
             if not (other.kind == "match" and other.feature != p.feature):
-                return await self._run(chat_id, p.feature, {**p.args, p.missing[0]: text.strip()}, ctx)
-            chat = self.store.get(chat_id)                  # fall through: handle it as a fresh request
+                return await self._run(chat_id, p.feature, {**p.args, p.missing[0]: text.strip()}, ctx, person=person)
+            me = self.store.get(person)                     # fall through: handle it as a fresh request
 
         # 4. intent engine
-        key, last = " ".join(word.rstrip(".!?؟ ").split()), chat.repeat
+        key, last = " ".join(word.rstrip(".!?؟ ").split()), me.repeat
         again = last if last and last.text == key else None          # the same message, sent again within a minute
-        d: Decision = await self._decide(text, chat.last_turn)
+        d: Decision = await self._decide(text, me.last_turn)
         if d.kind in ("match", "followup"):
             spec = self.registry.spec(d.feature)
             if again and again.feature == d.feature and again.reply and spec and spec.repeat == "reuse":
-                self.store.set_repeat(chat_id, Repeat(key, d.feature, again.reply, again.count + 1))
+                self.store.set_repeat(person, Repeat(key, d.feature, again.reply, again.count + 1))
                 trace.note(kind="repeat", feature=d.feature)
                 return replies.repeated(again.reply, again.count + 1)
-            return await self._run(chat_id, d.feature, d.args, ctx, key, again)
+            return await self._run(chat_id, d.feature, d.args, ctx, key, again, person)
         if d.kind == "clarify":
-            self.store.set_pending(chat_id, Pending(d.feature, d.args, d.missing))
+            self.store.set_pending(person, Pending(d.feature, d.args, d.missing))
             trace.note(kind="clarify", feature=d.feature)
             return d.question
-        self.store.set_repeat(chat_id, Repeat(key, None, None, again.count + 1 if again else 1))
+        self.store.set_repeat(person, Repeat(key, None, None, again.count + 1 if again else 1))
         return None
 
     async def _decide(self, text: str, last) -> Decision:
@@ -96,11 +113,11 @@ class Bot:
         gets a turn every few ms, so a burst of messages cannot delay the webhook's acknowledgements or the other chats' I/O."""
         return await asyncio.get_running_loop().run_in_executor(_ENGINE_THREAD, self.engine, text, self.registry.specs(), last)
 
-    async def respond(self, chat_id: str, text: str) -> str:
+    async def respond(self, chat_id: str, text: str, sender: str | None = None) -> str:
         """handle(), plus a fallback for messages nothing understood (which changes if it is repeated)."""
-        reply = await self.handle(chat_id, text)
+        reply = await self.handle(chat_id, text, sender)
         if not reply:
-            last = self.store.get(chat_id).repeat
+            last = self.store.get(self.person_key(chat_id, sender)).repeat
             result = replies.classify_unmatched(self.registry, last.count if last else 1, text)
             reply = result.reply
             trace.note(kind="fallback" if result.kind == "unmatched" else "out_of_scope", feature=result.category)
@@ -114,7 +131,8 @@ class Bot:
         return tidy(reply)
 
     async def _run(self, chat_id: str, feature: str, args: dict, ctx: Context,
-                   key: str = "", again: Repeat | None = None) -> str:
+                   key: str = "", again: Repeat | None = None, person: str | None = None) -> str:
+        person = person or chat_id
         run = await self.dispatcher.run_feature(feature, args, ctx)
         trace.note(kind="answer" if run.ok else "error", feature=feature)
         if self.recorder and not run.ok and run.reply in (GENERIC_ERROR, NETWORK_ERROR):   # the tool failed, not the user's input
@@ -123,8 +141,8 @@ class Bot:
             tool = feature.partition(".")[0]
             self.store.set_session(chat_id, ActiveSession(tool, run.session.state))
         elif run.ok:
-            self.store.set_last_turn(chat_id, LastTurn(feature, run.args))
+            self.store.set_last_turn(person, LastTurn(feature, run.args))
             if key:
                 count = again.count + 1 if again and again.feature == feature else 1
-                self.store.set_repeat(chat_id, Repeat(key, feature, run.reply, count))
+                self.store.set_repeat(person, Repeat(key, feature, run.reply, count))
         return run.reply

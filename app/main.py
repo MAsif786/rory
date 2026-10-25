@@ -130,17 +130,21 @@ def parse(event) -> tuple[Job | None, str]:
         return None, "duplicate"
     me = event.get("me")
     me_id = me.get("id", "") if isinstance(me, dict) and isinstance(me.get("id", ""), str) else ""
-    ctx = bot.store.get(chat_id)
-    addressed = address(text, p, me_id, settings.bot_name, settings.group_mode, engaged=bool(ctx.session or ctx.pending))
+    participant = p.get("participant") if isinstance(p.get("participant"), str) else None
+    sender = participant or chat_id
+    chat_ctx, my_ctx = bot.store.peek(chat_id), bot.store.peek(bot.person_key(chat_id, sender))       # peek: group chatter must not create state
+    engaged = bool((chat_ctx and chat_ctx.session) or (my_ctx and my_ctx.pending))                    # a running game, or a question asked of THIS person
+    addressed = address(text, p, me_id, settings.bot_name, settings.group_mode, engaged=engaged)
+    if addressed is None and settings.group_mode == "mention" and chat_id.endswith("@g.us") and bot.expects_followup(chat_id, sender, text, settings.group_followup_window):
+        addressed = text                                                # the same person following up on Rory's answer: no mention needed
     if addressed is None:
         return None, "group_not_addressed"
-    participant = p.get("participant") if isinstance(p.get("participant"), str) else None
     session = event.get("session") if isinstance(event.get("session"), str) else "default"
     return Job(session, chat_id, participant or chat_id, addressed, message_id), ""
 
 
-async def reply_for(chat_id: str, text: str) -> str:
-    return await bot.respond(chat_id, text)
+async def reply_for(chat_id: str, text: str, sender: str | None = None) -> str:
+    return await bot.respond(chat_id, text, sender)
 
 
 async def process(job: Job) -> None:
@@ -157,7 +161,7 @@ async def process(job: Job) -> None:
             elif len(job.text) > settings.max_message_chars:
                 outcome, reply = "too_long", TOO_LONG.format(n=settings.max_message_chars)
             else:
-                reply = await reply_for(job.chat_id, job.text)
+                reply = await (reply_for(job.chat_id, job.text) if job.sender == job.chat_id else reply_for(job.chat_id, job.text, job.sender))
             if reply:
                 await send_text(job.session, job.chat_id, reply)
     except Exception:                                                   # noqa: BLE001 - one bad message must never take the worker down
