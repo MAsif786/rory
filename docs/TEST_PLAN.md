@@ -18,6 +18,9 @@ and where answers could be smarter. Everything here is executable.
 | 2 | **Engine unit tests** | `tests/test_intent_engine.py` | politeness/typo/elongation handling, keyword rule, apostrophes, negatives, **phrase self-consistency (every declared phrase routes to its own feature)**, **ties**, **ReDoS / worst-case speed** |
 | 3 | **Intent corpus** | `tests/test_intent_corpus.py` + `tests/corpus/intents.py` | misrouted messages, false positives, wrong arguments, missing-input questions, per-feature accuracy (>= 97%), the **gaps backlog** (strict xfail) |
 | 4 | Per-tool metadata | `tests/test_tools_nlu.py` | every `example` routes to its feature, every `negative` never does, chatter matches nothing |
+| 4a | **NLU layer** | `tests/test_nlu_layer.py` | dates lifted out of slots, spoken maths, synonyms widen understanding but never turn chatter or out-of-scope requests into tool calls, synonym validation in the registry |
+| 4b | **Synonym helper** | `tests/test_suggest.py` | the WordNet suggestion filters (symmetry guard, ambiguity, known words), against a tiny fake WordNet; the real CLI only when installed |
+| 4c | **Out of scope** | `tests/test_out_of_scope.py` | honest replies for missing capabilities, statements are not requests, demand is filed by capability |
 | 5 | **Follow-ups (auto-derived)** | `tests/test_followups.py` | every declared follow-up phrase of every tool: stays on the feature, changes only what it declares, keeps the rest, silent without context |
 | 6 | **Conversations** | `tests/test_scenarios.py` + `tests/scenarios/` | multi-turn flows: follow-ups, clarifications, repeats, greetings, help, unknown words, games, expiry, outages |
 | 7 | **Failure matrix** | `tests/test_tool_failures.py` | every tool x {connection refused, timeout, hung upstream, HTTP 500, 404, wrong JSON shape, empty result}: friendly message, no leak, recovers on the next message |

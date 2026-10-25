@@ -53,7 +53,7 @@ Rory's core already speaks `chat_id + text -> reply`. Make that explicit and add
 
 ## Phase 3 - Understanding more (rolling, driven by the log)
 
-Detailed status, evidence and step-by-step plan for this phase (entities, synonyms, confidence, multi-intent): **`docs/NLU_CAPABILITIES.md`**.
+Detailed status, evidence and step-by-step plan for this phase: **`docs/NLU_CAPABILITIES.md`**. Done so far: entity pre-pass for dates and spoken maths, reviewed synonyms with a WordNet-assisted authoring script, honest out-of-scope replies with demand tracking. Still open: confidence/"A or B?" questions, multi-intent, a dictionary guard for typo repair.
 
 Order is set by `quality_report.py --log`, but the known backlog (`GAPS`) already points at the work:
 

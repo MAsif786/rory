@@ -1,98 +1,90 @@
-# Language understanding: what Rory has today, what it lacks, and the plan
+# Language understanding: what Rory has, what it lacks, and the plan
 
-Status as of 2026-10-25. Rory is rule-based (no LLM): every tool declares `phrases`, `keywords`, `negatives`, typed `inputs` and
-`followups`; one small engine (`app/intent/rule_based.py`) matches messages against them. This page records, capability by capability,
-what exists, the evidence, and what to build next. Roadmap context: `docs/ROADMAP.md` (Phase 3); measuring: `docs/TEST_PLAN.md`.
+Status as of 2026-10-25 (second revision: entity pre-pass, synonyms and out-of-scope handling are now built). Rory is rule-based (no
+LLM): every tool declares `phrases`, `keywords`, `negatives`, typed `inputs`, `followups` and `synonyms`; one small engine
+(`app/intent/rule_based.py`) matches messages against them. Roadmap context: `docs/ROADMAP.md` (Phase 3); measuring: `docs/TEST_PLAN.md`.
 
 ## 1. Status at a glance
 
-| Capability | Status | Where / how it works today | Gap |
+| Capability | Status | How it works | Remaining gap |
 |---|---|---|---|
-| Test corpus of real user messages | **Yes (small)** | `tests/corpus/intents.py`: ~150 labelled messages (`PLAIN`, `NOISY`, `WRAPPED`, `PROMOTED`, `REAL`), 40 chatter lines that must not match, argument checks (`ARGS`), clarification cases, and the `GAPS` backlog. The **improvement inbox** (`data/unmatched.jsonl`, `scripts/unmatched.py`) collects new real messages. | Few real messages yet (mostly the owner's own chats). Needs production traffic. |
-| Spelling normalization | **Yes** | `variants()` tries, in order: politeness-stripped text, the original, de-elongated ("hii"->"hi"), typo-repaired ("wether"->"weather": words of 5+ letters, similarity >= 0.9). Apostrophes optional, case/punctuation ignored. Negatives are checked against the original text too. | Short-word typos ("oll", "wtr") only get a "Did you mean...?" suggestion. |
-| Synonyms | **Partial** | No synonym layer: synonyms are enumerated as phrases per tool (913 phrases). Special tables exist inside tools: currency names->ISO codes, unit aliases, some Roman Urdu phrases. | No shared synonym/abbreviation table (`temp`, `info`, `rs`, `pls`, `u`). The old branch had one (`features.abbreviations`/`typos`); it was not ported. |
-| Clarification questions | **Partial** | A missing *required input* asks a question (`Input.ask`), the next message fills it, a different request cancels it, an expired question is dropped. Unmatched near-misses: "Did you mean *X*?". | Nothing asks "A or B?" when two features score about the same: the engine silently takes the first. |
-| Confidence thresholds | **No** | Matches are ranked internally `(kind, specificity)`; fixed cutoffs exist for typo repair (0.9), suggestions (0.6/0.7) and the keyword rule (<= 3 words). | No exposed confidence value and no per-tool threshold. Thin margins are only reported afterwards (`quality_report.py`). |
-| Entity extraction: currencies | **Yes** | `currency` input patterns accept codes and names (`dollars`, `rupees`, `euros`...), amounts with separators. | Only the 20-ish currencies listed; crypto absent. |
-| Entity extraction: numbers | **Partial** | Pattern-restricted slots: amounts, units, percentages, dice (`2d6`), verse references. | Numbers in words ("square root of 144", "fifteen times four"). |
-| Entity extraction: cities | **Partial** | Captured from a phrase slot (`weather in {place}`) and validated by the geocoder (Open-Meteo). | No place gazetteer: a city is not recognised without a trigger phrase; slots accept almost any text. |
-| Entity extraction: dates | **No** | Only literal phrases such as "tomorrow", "next week". | No date parser ("next monday", "the weekend", "kal", "in 3 days"). |
-| Multi-intent detection | **No** | One message -> one intent (plus follow-ups to the previous answer). | No splitting of "weather in Lahore and time in Lahore". |
+| Test corpus of real messages | **Yes (small)** | `tests/corpus/intents.py` (~180 labelled messages incl. a `REAL` section from live chats, 45 chatter lines that must not match, argument checks, `GAPS` backlog). The improvement inbox (`data/unmatched.jsonl`, `scripts/unmatched.py`) collects new real messages. | Needs production traffic; few real messages so far. |
+| Spelling normalization | **Yes** | politeness stripped, de-elongation ("hii"), typo repair (5+ letters, similarity >= 0.9), optional apostrophes, case/punctuation ignored; negatives also see the original text. | Short-word typos ("oll", "wtr") only get "Did you mean...?". |
+| Synonyms | **Yes** | `app/nlu/lexicon.py` (core chat abbreviations: `temp`, `abt`, `u`...) + each tool's `Tool(..., synonyms={...})`, merged. Used only as a fallback or a *challenger* (it must beat the direct match's rank) and only when the rewritten message matches a declared phrase; max 2 words rewritten; words some phrase already uses are never rewritten. Candidates are generated at **development time** with WordNet (`scripts/suggest_synonyms.py`) and **reviewed by a human**; the bot never loads WordNet. | A reviewed table is small (grow it per tool); no dictionary-word guard for typo repair yet. |
+| Entities: dates | **Yes** | `app/nlu/entities.py` lifts "tomorrow", "next monday", "the weekend", "in 3 days", "day after tomorrow", Roman Urdu `kal`/`parson`/`aaj` out *before* matching; a feature that declares an input named `when` receives it (weather does; others can adopt). The rewrite is only trusted when the matched feature takes a `when`. | Only weather uses it so far; no clock times ("at 5pm"), no calendar dates ("5 nov"). |
+| Entities: numbers & maths in words | **Yes** | "fifteen plus four" -> `15 + 4`, "square root of 144" -> `sqrt(144)`, "twenty percent of fifty" -> `20 percent of 50`; only trusted when the matched feature is the calculator. | Fractions, ordinals, decimals in words. |
+| Entities: currencies | **Yes** | codes and names (`dollars`, `rupees`...), amounts with separators. | ~20 currencies, no crypto. |
+| Entities: cities | **Partial** | captured from a phrase slot and validated by the geocoder. | No gazetteer; a city is not recognised without a trigger phrase. |
+| Clarification questions | **Partial** | missing required input -> question (`Input.ask`), next message answers it, a different request cancels it; near-misses -> "Did you mean X?". | Nothing asks "A or B?" when two features tie. |
+| Out-of-scope detection | **Yes** | requests no tool serves ("order me a pizza", "set an alarm", "bitcoin price") are answered honestly ("I can't place orders. I can help with weather, news...") instead of "I didn't get that", and filed by capability (`orders`, `reminders`, `music`, `prices`...) so demand can be counted. Statements that merely mention a topic ("I love music") are not mistaken for requests. | The category list is hand-written (`CAPABILITY_GAPS` in `app/replies.py`). |
+| Confidence thresholds | **No** | ranking is internal `(kind, specificity)`; fixed cutoffs for typo repair and suggestions. | No exposed confidence, no per-tool thresholds. |
+| Multi-intent | **No** | one message -> one intent (+ follow-ups). | "weather in lahore and time in lahore" still merges into one slot. |
 
-## 2. Evidence (probe run, offline engine)
+## 2. Evidence (probe, before -> after)
 
-| Message | Result today | Why it is wrong |
+| Message | Before | Now |
 |---|---|---|
-| `weather in lahore and time in lahore` | weather, place = `lahore and time in lahore` | two requests merged into one slot, then the geocoder fails |
-| `weather in lahore and karachi` | weather, place = `lahore and karachi` | two places, one slot |
-| `weather next monday in karachi` | weather, place = `next monday in karachi` | a date swallowed by the place slot |
-| `forecast for the weekend in dubai` | forecast, place = `the weekend in dubai` | same |
-| `list of jokes or facts` | country facts, country = `list of jokes or` | free-text slot accepts anything |
-| `what is the temp in dubai` | Wikipedia lookup of `the temp in dubai` | abbreviation unknown, so a generic question phrase wins |
-| `weather tomorrow` | nothing | a date without a place is not understood (should ask "Which place?") |
-| `100 usd to pkr and eur` | nothing | only comma-separated quotes are supported |
-| `temp in lahore` | nothing | no synonym for `temp` |
+| `weather next monday in karachi` | place = `next monday in karachi` | place = `karachi`, when = `next monday`, answered for that day |
+| `forecast for the weekend in dubai` | place = `the weekend in dubai` | place = `dubai`, when = `weekend` |
+| `weather tomorrow` | nothing | asks "Which place?" and remembers tomorrow |
+| `kal ka mausam lahore` | gap | tomorrow's weather for Lahore |
+| `what's fifteen plus four` / `square root of 144` | wiki lookup / gap | calculator: 19 / 12 |
+| `temp in lahore`, `what is the temp in dubai` | nothing / Wikipedia | weather (core synonym `temp`) |
+| `tell me a jest`, `any tidings today`, `farewell` | nothing | joke, headlines, goodbye (tool synonyms) |
+| `who is the writer of dune` | Wikipedia | book tool (the synonym reading is stronger than the direct one) |
+| `list of jokes or facts` | country facts for "list of jokes or" | not a country |
+| `order me a pizza`, `bitcoin price` | "I didn't get that" | "I can't place orders..." / "Prices aren't available yet...", logged as demand |
+| `weather in lahore and time in lahore` | place = `lahore and time in lahore` | **unchanged** (multi-intent, step 4) |
+| `100 usd to pkr and eur` | nothing | **unchanged** |
 
-**Root cause (one thing, three symptoms):** the engine matches whole phrases whose placeholders are free text. Nothing extracts
-*entities* (dates, numbers-in-words, multiple targets) *before* phrase matching, so whatever follows a trigger word is swallowed by the
-slot. The fix is a pre-pass that lifts entities out of the text and leaves a clean phrase behind, not more phrases.
+## 3. How synonyms work (design and safety)
 
-## 3. Plan (in order of value)
+* **Where entries come from.** (1) Core abbreviations that mean the same everywhere (`app/nlu/lexicon.py`). (2) Per-tool `synonyms={}`,
+  produced like this: run `scripts/suggest_synonyms.py <tool>`: for each word the tool's phrases use, WordNet proposes words
+  of the same *most common* sense (`gag -> joke`), filtered by a symmetry check (the candidate must itself mean the tool word in its own most
+  common sense; this drops `word -> news` and `reserve -> book`), by "already a word some tool uses", and by ambiguity (a candidate that
+  could mean two of your words is reported, not suggested). A person then keeps the safe ones and adds chat words WordNet cannot know.
+* **Why not WordNet at runtime.** Measured: 1.6 s load and +177 MB, and every sense of every word ("book" -> Bible, bankroll; "play" ->
+  45 synonyms) which would turn "book a flight" or "roll up my sleeves" into tool calls; it also has no `pls`, `bro`, `mausam`, `khabrein`.
+  The shipped table is tiny and reviewed, so the runtime cost is a dictionary lookup.
+* **Guardrails (all tested in `tests/test_nlu_layer.py`).** Fallback/challenger only; the rewritten text must match a declared phrase; at
+  most two substitutions; known words are never rewritten; registry rejects synonyms that point at a word the tool does not use, that
+  contradict another tool or the core table, or that are not single lowercase words; and 61 chatter/out-of-scope messages must never be
+  rewritten into a tool call.
+* **Measured value.** On 25 paraphrases the WordNet-only idea understood 8 (4 via synonyms), with 0 wrong answers on 61 chatter/out-of-scope
+  messages. The synonym layer is a safety-first widening, not a magic wand: most paraphrase failures were *phrase shape*, which the
+  entity pre-pass and new phrases fixed. Growth should come from real messages (inbox) rather than bigger synonym lists.
 
-Each step ships with corpus lines, `GAPS` promotions, engine unit tests and a `quality_report.py` check, as in the test plan.
+## 4. Remaining plan
 
-### Step 1 - Entity pre-pass: dates and numbers (fixes most of section 2)
-* New `app/nlu/entities.py`: `extract(text) -> (clean_text, entities)`. Dates: today, tomorrow, tonight, weekend, weekday names, "next/this
-  <weekday>", "in N days/hours", "on 5 nov", Roman Urdu `aaj`/`kal`/`parson`. Numbers in words: "fifteen", "a hundred", "square root of", "times",
-  "plus", "divided by".
-* Entities reach tools as optional inputs (`Input(type="date")`, `when`): weather/forecast/news use them; tools that do not declare one just
-  never see them. Phrases keep working unchanged because the extractor removes the date words first: `weather next monday in karachi`
-  -> `weather in karachi` + `when=monday`.
-* Missing slot after extraction asks, not fails: `weather tomorrow` -> "Which place?" and remembers `when=tomorrow`.
-* **Done when:** every date/number gap in `tests/corpus/intents.py` passes, `lahore`/`karachi` slots never contain date words (new property
-  test over all phrases x date words), engine p95 still < 25 ms.
+1. **Ambiguity and confidence.** Expose `Decision.confidence` and `alternatives`; ask "Did you mean *A* or *B*?" when two features score
+   close (per-feature threshold for risky actions); log confidence. *Done when* thin-margin cases in the report ask or disappear and corpus
+   accuracy is unchanged.
+2. **Multi-intent.** Split on `and` / `then` / `also` only when both halves independently match (or one is a follow-up of the other), max 2
+   intents, so `fish and chips`, `pizza or sushi`, `Trinidad and Tobago` keep working; run sequentially, a failed second half never blocks the
+   first. *Done when* a `MULTI` corpus section passes and single-intent accuracy is unchanged.
+3. **Dictionary guard for typo repair** (optional). A ~40k-word list (300 KB, 1 µs per lookup) so real words are never "repaired" and shorter
+   typos (`oll`, `wtr`) can be repaired safely; benchmarked in the discussion that led here (pyspellchecker's dictionary: 0.1 s load, +44 MB; its
+   own `correction()` is 55 ms per word and must not be used).
+4. **More `when` consumers.** News ("news from yesterday"), clock ("time tomorrow in tokyo" is not meaningful), reminders (Phase 4).
+5. **Grow the real-message corpus** (continuous): `scripts/unmatched.py list` -> decide -> `corpus` -> tests -> `review`. Target 500 real labelled
+   messages before any heavier NLU is considered; track accuracy on the real subset separately.
 
-### Step 2 - Synonym and abbreviation table
-* `app/nlu/lexicon.py`: one reviewed table (`temp->temperature`, `rs->pkr`, `pls/plz->please`, `u->you`, `info->information`, `bucks->dollars`,
-  `msg->message`...) applied in `variants()` before matching; tools can contribute entries via `Tool(..., synonyms={...})` so a new tool never
-  edits core. Port the old branch's `typos`/`abbreviations` lists as the seed.
-* **Done when:** `temp in lahore`, `what is the temp in dubai` route to weather; a collision test proves a synonym never changes the meaning
-  of a message that already matched (corpus accuracy and false positives unchanged).
-
-### Step 3 - Ambiguity and confidence
-* Expose `Decision.confidence` (0-1, derived from specificity and margin to the runner-up) and `Decision.alternatives`.
-* Thresholds: `>= 0.7` act; `0.4-0.7` with a clear runner-up -> ask "Did you mean *A* or *B*?" (buttons on platforms that support them);
-  `< 0.4` -> the existing suggestion/fallback path. Per-feature override (`Tool.feature(..., min_confidence=...)`) for risky actions.
-* Log `confidence` in the structured log line; `quality_report.py` plots the distribution and lists low-confidence answers that users
-  accepted (good) or abandoned (add phrases).
-* **Done when:** thin-margin cases from the report either disappear or ask; no regression in corpus accuracy; asking rate on the corpus < 3%.
-
-### Step 4 - Multi-intent
-* Split on `and` / `then` / `also` / `,` / `;` only when *both* halves independently match a feature (or one half is a follow-up of the other),
-  limited to 2 intents per message to bound cost and reply length; otherwise treat as one message (so `fish and chips`, `pizza or sushi` and
-  `lahore and karachi` keep working).
-* Execute sequentially, join replies with a divider; if the second fails, still send the first. Shared entity: `weather in lahore and time`
-  -> the second inherits `lahore`.
-* **Done when:** the multi-intent corpus (new `MULTI` section) passes, single-intent accuracy and false positives are unchanged, and a
-  scenario test covers one half failing.
-
-### Step 5 - Grow the real-message corpus (continuous)
-* Every week: `scripts/unmatched.py list` -> decide -> `corpus` -> tests -> `review`. Target: 500 real labelled messages before any LLM
-  or heavier NLU is considered; track accuracy on the real subset separately from the synthetic one.
-* Anonymise before sharing a corpus: chat ids are already hashed; strip names/numbers from texts with a small scrubber.
-
-## 4. Non-goals for now
+## 5. Non-goals for now
 * A general question-answering model; open questions ("who invented the telephone") stay on the roadmap as a search/Wikipedia fallback.
-* Statistical intent classifiers or embeddings. They become interesting only after the corpus is large enough to train and evaluate them,
-  and would plug in behind the existing `IntentEngine` interface, measured against the same corpus.
+* Statistical intent classifiers or embeddings, until the corpus is large enough to train and evaluate them; they would plug in behind the
+  existing `IntentEngine` interface and be measured against the same corpus.
 
-## 5. Where the code is
+## 6. Where the code is
 | Piece | File |
 |---|---|
-| Engine, variants, scoring, `explain()` | `app/intent/rule_based.py` |
-| Decision / engine interface | `app/intent/decision.py` |
-| Router (pending, follow-ups, repeats, fallback) | `app/smart.py`, `app/replies.py` |
-| Declarative tool metadata | `app/core/schemas.py`, `app/core/tool.py`, `tools/*/tool.py` |
+| Engine: variants, scoring, pre-tiers, synonym challenger, `explain()` | `app/intent/rule_based.py` |
+| Decision (incl. `via`, `entities`) | `app/intent/decision.py` |
+| Dates, spoken maths | `app/nlu/entities.py` |
+| Core synonyms, rewrite rules | `app/nlu/lexicon.py` |
+| WordNet suggestion logic (dev time) / CLI | `app/nlu/suggest.py` / `scripts/suggest_synonyms.py` |
+| Router, fallback, out-of-scope | `app/smart.py`, `app/replies.py` |
+| Tool metadata (`synonyms`, `when`) | `app/core/tool.py`, `app/core/schemas.py`, `tools/*/tool.py` |
 | Corpus + gaps | `tests/corpus/intents.py` |
-| Improvement inbox | `app/inbox.py`, `scripts/unmatched.py` |
+| Improvement inbox / demand ranking | `app/inbox.py`, `scripts/unmatched.py` |
 | Report | `scripts/quality_report.py` |

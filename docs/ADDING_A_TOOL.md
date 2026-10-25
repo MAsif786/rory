@@ -18,6 +18,40 @@ async def current(ctx, place, day):
     return f"Weather in {place} ({day}): ..."
 ```
 
+## Synonyms: let WordNet suggest, you review
+People say "gag" for "joke" and "tidings" for "news". Declare such words on the tool, and the engine (as a fallback, and only when the rewritten
+message matches one of your declared phrases) reads them as your word:
+```python
+tool = Tool("fun", title="Fun", emoji="😂", description="Jokes and fun facts", synonyms={"gag": "joke", "jest": "joke"})
+```
+Do not invent the list: generate candidates from WordNet at development time (the bot itself never loads WordNet):
+```bash
+.venv/bin/python scripts/suggest_synonyms.py --download     # once: fetches ~10 MB into data/nltk_data (nltk is in requirements-dev.txt)
+.venv/bin/python scripts/suggest_synonyms.py fun            # candidates from the words your phrases use
+.venv/bin/python scripts/suggest_synonyms.py --words joke   # or for specific words
+```
+The output shows each candidate with the meaning it matched and a ready `synonyms={...}` line. **Review it**: WordNet knows every sense
+of a word (`tending -> care`, `amercement -> fine` are technically synonyms and useless). Keep what a user would really type for exactly that
+thing; add chat words WordNet cannot know (`pls`, `bro`, Roman Urdu) by hand. Candidates are already filtered to the most common sense and
+by a symmetry check; `--word-senses 2 --candidate-senses 2` loosens that if you want more to choose from.
+
+Rules the registry and tests enforce: single lowercase words; the target word must appear in one of the tool's phrases or keywords; a word
+some tool's phrase already uses is never rewritten; two tools cannot disagree about a synonym or redefine one of the core chat
+abbreviations (`app/nlu/lexicon.py`: `temp`, `abt`, `u`...); at most two words of a message are rewritten; and
+`tests/test_nlu_layer.py` proves synonyms never turn chatter or out-of-scope requests into tool calls.
+
+## Dates and spoken numbers
+Declare an input named `when` and the engine understands "tomorrow", "next monday", "the weekend", "in 3 days", "kal" for you: the date is
+lifted out of the message first, so it can never end up inside another slot, and arrives as `when="next monday"`. Use
+`app.nlu.entities.days_ahead(when)` to turn it into a day count and `describe(when)` for wording ("Monday 26 Oct"); a message with a date but
+no place still asks "Which place?" and remembers the date. Spoken maths ("fifteen plus four", "square root of 144") is rewritten for the
+calculator automatically.
+
+## Requests Rory cannot serve
+A request no tool and no synonym matches is answered honestly ("I can't place orders. I can help with weather, news...") and filed in the
+improvement inbox by capability (`scripts/unmatched.py stats` ranks the missing capabilities users ask for: that is your tool roadmap).
+To teach Rory a new capability category, add a line to `CAPABILITY_GAPS` in `app/replies.py`, or better, build the tool.
+
 ## Game tool
 ```python
 tool = Tool("trivia")

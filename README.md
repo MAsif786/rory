@@ -19,6 +19,9 @@ python -m venv .venv && .venv/bin/pip install -r requirements.txt -r requirement
 
 Messages Rory could not answer are saved to `data/unmatched.jsonl`; review them with `scripts/unmatched.py list` ([how it fits in](docs/TEST_PLAN.md)).
 
+**Writing a tool?** Copy `tools/_template/` ([guide](docs/ADDING_A_TOOL.md)). To find the other words people use for yours, let WordNet suggest synonyms while you develop (development only; the bot never loads it) and review them:
+`.venv/bin/python scripts/suggest_synonyms.py --download` (once), then `scripts/suggest_synonyms.py <tool>`.
+
 Language understanding: what exists and what is planned is in [docs/NLU_CAPABILITIES.md](docs/NLU_CAPABILITIES.md); the roadmap is in [docs/ROADMAP.md](docs/ROADMAP.md).
 
 Testing is described in [docs/TEST_PLAN.md](docs/TEST_PLAN.md) (intent corpus, follow-ups, conversations, failure matrix, live API checks).
