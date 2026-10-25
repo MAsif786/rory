@@ -24,7 +24,7 @@ SCENARIOS = [
     Scenario("guess: bad input is handled in the game", [T("play guess"), T("banana", session="guess", lacks="didn't get that"), T("999", session="guess")]),
     Scenario("rps: any move gets a result", [T("play rps", session="rps"), T("rock", has="Score", session="rps"), T("r", has="Score"), T("lizard", session="rps")]),
     Scenario("hangman: guesses", [T("play hangman", session="hangman"), T("e", has="Lives", session="hangman"), T("e", any_of=["again", "already"], session="hangman")]),
-    Scenario("tictactoe: a move", [T("play tic tac toe", session="ttt"), T("5", has="1", session="ttt"), T("5", session="ttt")]),
+    Scenario("tictactoe: a move", [T("play tic tac toe", session="ttt"), T("5", has=["❌", "⭕"], session="ttt"), T("5", session="ttt")]),
     Scenario("blackjack: stand ends the round", [T("play blackjack", session="blackjack"), T("stand", pre=hand, any_of=["win", "lose", "Push", "push", "bust", "Dealer"])]),
     Scenario("highlow: guesses", [T("play higher or lower", session="highlow"), T("higher", any_of=["Streak", "Same card", "Game over"])]),
     Scenario("memory: reverse order", [T("play memory challenge", session="memory", has="reverse"), T("🚗🐶🍎", pre=sequence, has="Round 2", session="memory"),
