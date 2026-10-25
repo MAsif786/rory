@@ -67,7 +67,7 @@ Rory's core already speaks `chat_id + text -> reply`. Make that explicit and add
 
 ## Phase 3 - Understanding more (rolling, driven by the log)
 
-Detailed status, evidence and step-by-step plan for this phase: **`docs/NLU_CAPABILITIES.md`**. Done so far: entity pre-pass for dates and spoken maths, reviewed synonyms with a WordNet-assisted authoring script, honest out-of-scope replies with demand tracking. Still open: confidence/"A or B?" questions, multi-intent, a dictionary guard for typo repair.
+Detailed status, evidence and step-by-step plan for this phase: **`docs/NLU_CAPABILITIES.md`**. Done so far: entity pre-pass for dates and spoken maths, reviewed synonyms with a WordNet-assisted authoring script, honest out-of-scope replies with demand tracking. Also done: dictionary-guarded typo repair (swaps, drops, doubled letters, real-word slips; never touches arguments), emoji/filler stripping, "again / one more" follow-ups. Still open: confidence/"A or B?" questions and multi-intent.
 
 Order is set by `quality_report.py --log`, but the known backlog (`GAPS`) already points at the work:
 
@@ -86,6 +86,22 @@ Order is set by `quality_report.py --log`, but the known backlog (`GAPS`) alread
 6. **Learning loop** (started: the improvement inbox `data/unmatched.jsonl` + `scripts/unmatched.py list|corpus|review|stats|prune` record, group,
    suggest the nearest feature and export corpus lines). Next: propose the *phrase* to add (nearest feature + captured text) as a diff,
    and move the inbox into the Phase 1 state store so it survives redeploys and can be reviewed from a dashboard.
+
+### Understanding improvements backlog (from the real-human tests in `tests/humans/`)
+
+Measured with the seeded humanizer (`pytest tests/humans`): shouting, punctuation, spacing and emoji are 100%; typos are 74-86%; two kinds of mess at once 87%.
+Goal: help and run the right tool, not chit-chat. Each item raises a floor in `FLOORS` (`test_humanized_corpus.py`); never lower one.
+
+- [ ] **Dropped letters (74%, weakest)**: word-boundary repair for 3-4 letter words ("ply quiz", "pay tic tac toe"), using which tools could match as the tie-break.
+- [ ] **4-5 letter real-word slips** ("tied" for "tired", "moles" for "miles"): a short reviewed table of common slips per tool (`synonyms=`), not a wider fuzzy match.
+- [ ] **Slips inside multi-word phrases** ("wha'ts", "plsu", "pecent"): per-phrase repair so a spoken-maths or percent sentence is not sent to Wikipedia.
+- [ ] **Letters inside arguments**: never repair them (done for place names); extend the same guard to book/movie titles, repo names and options of `choose`.
+- [ ] **"A or B?" questions** when two tools score within a small margin ("play 21" vs "what is 21"), instead of guessing.
+- [ ] **Multi-intent** ("weather in lahore and flip a coin"): split, run each, reply once.
+- [ ] **Roman Urdu / Hinglish typo and filler coverage** in the humanizer and corpus (kal, mausam, batao, yaar), with its own floors.
+- [ ] **Longer human sessions**: personas with interruptions, corrections ("no I meant...") and repeated rephrasing, scored on first-try and within-three-tries success.
+- [ ] **Feed the inbox into the humanizer**: real unmatched messages become noise-profile examples (which typos people actually make).
+- [ ] **Speed guard**: typo repair is cached and length-bucketed; add the adversarial-input timing test for the humanizer variants to the stress test.
 
 ## Phase 4 - More tools (each is a folder; ranked by user value)
 
