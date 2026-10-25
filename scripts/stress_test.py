@@ -232,12 +232,13 @@ class Conn:
     async def _open(self) -> None:
         self.r, self.w = await asyncio.open_connection("127.0.0.1", self.port)
 
-    async def post(self, path: str, body: bytes, ctype: str = "application/json") -> tuple[int, bytes]:
+    async def post(self, path: str, body: bytes, ctype: str = "application/json", headers: dict | None = None) -> tuple[int, bytes]:
+        extra = "".join(f"{k}: {v}\r\n" for k, v in (headers or {}).items())
         for attempt in (0, 1):
             try:
                 if self.w is None or self.w.is_closing():
                     await self._open()
-                self.w.write(f"POST {path} HTTP/1.1\r\nHost: rory\r\nContent-Type: {ctype}\r\nContent-Length: {len(body)}\r\n\r\n".encode() + body)
+                self.w.write(f"POST {path} HTTP/1.1\r\nHost: rory\r\nContent-Type: {ctype}\r\n{extra}Content-Length: {len(body)}\r\n\r\n".encode() + body)
                 await self.w.drain()
                 head = await self.r.readuntil(b"\r\n\r\n")
                 lines = head.split(b"\r\n")
@@ -518,6 +519,37 @@ async def abuse_checks(rig: Rig, limit: int) -> dict:
     return out
 
 
+async def auth_checks(rig: Rig, key: str) -> dict:
+    """With a webhook secret configured: only correctly signed requests may reach the bot (WAHA's X-Webhook-Hmac, sha512 over the raw body)."""
+    from app import auth
+    out, port = {}, rig.bot.port
+
+    async def post(body: bytes, headers: dict | None = None):
+        conn = Conn(port)
+        try:
+            return (await conn.post("/webhook", body, headers=headers))[0]
+        finally:
+            await conn.close()
+
+    good = jbody(event("auth@c.us", "ping", "auth-1"))
+    sig = {"X-Webhook-Hmac": auth.sign(good, key), "X-Webhook-Hmac-Algorithm": "sha512"}
+    n0 = len(rig.waha.records)
+    out["unsigned"] = await post(good)
+    out["wrong_key"] = await post(good, {"X-Webhook-Hmac": auth.sign(good, "not-the-key"), "X-Webhook-Hmac-Algorithm": "sha512"})
+    out["tampered"] = await post(good.replace(b"ping", b"pong"), sig)
+    out["weak_algorithm"] = await post(good, {"X-Webhook-Hmac": "00", "X-Webhook-Hmac-Algorithm": "md5"})
+    out["replies_before_valid"] = len(await settle(rig, n0))
+    out["valid"] = await post(good, sig)
+    out["replies_after_valid"] = len([1 for _, ch, _t in await settle(rig, n0, expected=1) if ch == "auth@c.us"])
+    # a burst of bad requests must stay cheap and must never produce a reply
+    n1 = len(rig.waha.records)
+    codes = await asyncio.gather(*(post(jbody(event(f"bad{i}@c.us", "ping", f"bad-{i}"))) for i in range(300)))
+    out["bad_burst_401"] = sum(c == 401 for c in codes)
+    out["bad_burst_replies"] = len(await settle(rig, n1))
+    out["health_public"] = httpx.get(f"http://127.0.0.1:{port}/health", timeout=5).status_code
+    return out
+
+
 def run_abuse(args) -> None:
     limit = 12
     heading(f"ABUSE - floods, duplicates, oversized and malformed requests, group chatter (rate limit {limit}/30 s)")
@@ -541,6 +573,16 @@ def run_abuse(args) -> None:
     gate("1500 distinct chats all answered", r["many"] == 1500, f"{r['many']}")
     gate("bot alive and healthy after abuse", alive and healthy)
     gate("memory growth < 100 MB", rss1 - rss0 < 100, f"+{rss1 - rss0:.0f} MB")
+
+    key = "stress-test-secret"
+    with Rig(0.0, webhook_hmac_key=key) as rig2:
+        a = asyncio.run(auth_checks(rig2, key))
+    print(f"\n  webhook authentication (HMAC secret set): unsigned {a['unsigned']}, wrong key {a['wrong_key']}, tampered body {a['tampered']}, md5 {a['weak_algorithm']}, "
+          f"valid {a['valid']}; 300 unsigned requests -> {a['bad_burst_401']} x 401, {a['bad_burst_replies']} replies; /health {a['health_public']}")
+    gate("auth: unsigned, wrong-key, tampered and weak-algorithm requests get 401", [a["unsigned"], a["wrong_key"], a["tampered"], a["weak_algorithm"]] == [401] * 4)
+    gate("auth: a correctly signed request is answered, exactly once", a["valid"] == 200 and a["replies_before_valid"] == 0 and a["replies_after_valid"] == 1)
+    gate("auth: a flood of unsigned requests is all rejected and never answered", a["bad_burst_401"] == 300 and a["bad_burst_replies"] == 0)
+    gate("auth: /health stays public", a["health_public"] == 200)
 
 
 # --- main --------------------------------------------------------------------------------------------------------------------

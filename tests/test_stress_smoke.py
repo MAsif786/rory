@@ -22,7 +22,7 @@ def test_quick_stress_run_passes_every_gate(tmp_path):
     results = json.loads((tmp_path / "r.json").read_text())
     failed = [g for g, ok in results["gates"].items() if not ok]
     assert out.returncode == 0 and not failed, f"failed gates: {failed}\n{out.stdout[-3500:]}"
-    assert len(results["gates"]) >= 19
+    assert len(results["gates"]) >= 23                                                        # includes the four webhook-authentication gates
     burst = results["metrics"]["burst"]
     assert burst["throughput_msg_per_s"] > 0 and burst["ack_p95_ms"] < 1500                  # the webhook acknowledges fast whatever the work
 

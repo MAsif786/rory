@@ -18,6 +18,7 @@ Guiding rules (unchanged): **no LLM required**, drop-a-folder tools, core never 
 | 0.6 ✅ | Config & secrets via one `Settings` object (pydantic-settings), `.env` validated at startup | misconfiguration today fails at first use | startup fails fast with a clear message |
 | 0.7 ✅ | Structured logs (JSON) with chat hash, feature, latency, outcome | needed for every later phase; feeds `quality_report.py --log` | one log line per message with feature + ms |
 | 0.8 ✅ | **Hardened webhook** (found by the stress test): 400 for invalid JSON / non-objects, 413 above `MAX_BODY_BYTES`, ignores wrong-typed fields; a bounded queue + `WORKERS` pool so acknowledgements never wait for processing (503 when `QUEUE_SIZE` is full, WAHA retries); engine on its own thread; one pooled WAHA client | a burst or malformed flood can neither slow the acknowledgement nor crash the bot | `scripts/stress_test.py` gates |
+| 0.9 ✅ | **Webhook authentication** (HMAC signature / shared token, 401 otherwise) and a **fast WAHA sender** (keep-alive client, ~17x cheaper per reply) | an open webhook lets anyone make the bot reply; the sender was a third of the CPU | `tests/test_webhook_auth.py`, `tests/test_waha_client.py`, stress `abuse` auth gates |
 
 Delivered in `app/main.py` (+ `settings.py`, `guards.py`, `groups.py`, `logsetup.py`, `trace.py`); proven by `tests/test_phase0.py` (43 checks).
 Notes from the build: messages of one chat are processed strictly in order (per-chat lock) while chats run in parallel; the first message over
@@ -29,13 +30,14 @@ watcher also scans `.venv` and burns CPU). `/ready` and Prometheus metrics move 
 
 Measured by `scripts/stress_test.py` (see `docs/TEST_PLAN.md`): one bot process sustains ~120 messages/s with a ~20 ms acknowledgement p95, so
 capacity is not urgent; the numbers below say where the next gains are:
-* **Outbound HTTP is a third of the CPU.** `send_text` through httpx costs ~1.9 ms CPU per reply vs ~0.1 ms for a plain keep-alive socket
-  (bot total ~6 ms/message). Worth a small purpose-built HTTP/1.1 client (with httpx kept for https) before adding workers.
+* ~~**Outbound HTTP is a third of the CPU.**~~ **Done:** `app/waha.py` has a small keep-alive HTTP/1.1 client for `http://` WAHA URLs (httpx stays for
+  https / `WAHA_CLIENT=httpx`): ~0.1 ms CPU per reply instead of ~1.9 ms; bot cost per message fell from ~6 ms to 2-4 ms (170-460 msg/s per process).
 * **Phrase index.** Engine cost is linear in phrases since the compile-once fix (1x 1.2 ms, 5x 5 ms, 20x 25 ms, 50x 53 ms CPU); an index by anchor
   word makes it near-constant. Add the stress `engine` gate at 20x once indexed.
 * **More cores:** the engine is CPU-bound Python on one thread (GIL). Beyond ~150 msg/s run several bot processes behind the Redis state store
   (this phase), not threads.
-* **Webhook authentication** (Phase 0 follow-up): the endpoint accepts any POST. WAHA can sign webhooks (HMAC); verify it and reject the rest.
+* ~~**Webhook authentication**~~ **Done** (`app/auth.py`): set `WHATSAPP_HOOK_HMAC_KEY` in `.env` (WAHA signs, the bot verifies `X-Webhook-Hmac`, sha256/sha512,
+  constant-time); optional `WEBHOOK_TOKEN`. Off by default (existing setups keep working) with a startup warning until configured.
 * `uvicorn[standard]` (uvloop/httptools) was measured and did **not** help here.
 
 * **State store interface** (`ContextStore` becomes a protocol): in-memory (default) and **Redis** implementation for session, last turn,

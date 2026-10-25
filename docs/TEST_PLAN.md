@@ -46,7 +46,7 @@ It drives only pure tools (calculator, ping, greetings, help, unknown text) so i
 | `engine` | decision CPU time as the number of tools grows (1x/5x/20x/50x) | 1x p95 < 25 ms; 5x p95 < 60 ms; flags a cache cliff |
 | `burst` | N users x M messages at once, each user's messages in order over one connection | every message gets exactly one reply, correct and **in order per chat**; webhook acknowledgement p95 < 500 ms; reply p95 < 3 s; sustained throughput >= 40 msg/s; memory growth < 150 MB |
 | `soak` | steady msgs/s for minutes across hundreds of chats | no errors, every message answered, latency does not drift, memory flat in the second half |
-| `abuse` | one sender flooding, 25 retries of one message id, an oversized message, malformed/huge bodies, group chatter, 1,500 distinct chats | exactly the rate limit answered + one notice; duplicates answered once; **no 5xx**, no dropped connection; groups silent unless addressed; memory bounded; bot healthy after |
+| `abuse` | one sender flooding, 25 retries of one message id, an oversized message, malformed/huge bodies, group chatter, 1,500 distinct chats, and (with a webhook secret set) unsigned / wrong-key / tampered / md5-signed requests plus a 300-request unsigned flood | exactly the rate limit answered + one notice; duplicates answered once; **no 5xx**, no dropped connection; groups silent unless addressed; memory bounded; bot healthy after; **401 for every bad signature, never an answer**, a valid signature answered once, `/health` public |
 | `--waha-delay 0.3` | a slow WAHA | the webhook still acknowledges instantly (replies are queued) |
 
 ```bash
@@ -63,8 +63,9 @@ the connection (now 400/413); background tasks held the connection until the rep
 (now a bounded queue + worker pool, 503 when full); the engine ran on the event loop (now one dedicated thread); `send_text` built a new HTTP
 client per reply (now one pool: CPU per message 11.5 -> 6 ms); the engine recompiled regexes per call (compiled once: 20x tools 488 -> 25 ms).
 
-Measured on a laptop (8 cores, loaded): ~120 messages/s sustained per bot process, acknowledgement p95 about 20 ms during a 3,000 msg/s burst,
-memory +3-16 MB. WhatsApp traffic is typically a few messages per second, so one process has a very large margin.
+Measured on a laptop (8 cores, loaded): 170-460 messages/s sustained per bot process (2-4 ms CPU per message), acknowledgement p95 about 20 ms
+during a 3,000 msg/s burst, 1,500 distinct chats answered in ~1.2 s, memory +3-18 MB. WhatsApp traffic is typically a few messages per second,
+so one process has a very large margin. (Before the fast WAHA sender: ~120 msg/s, 6 ms CPU per message, 1,500 chats in 6 s.)
 
 ## 2. Quality gates (what "good" means)
 

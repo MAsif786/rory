@@ -24,6 +24,10 @@ Messages Rory could not answer are saved to `data/unmatched.jsonl`; review them 
 
 Language understanding: what exists and what is planned is in [docs/NLU_CAPABILITIES.md](docs/NLU_CAPABILITIES.md); the roadmap is in [docs/ROADMAP.md](docs/ROADMAP.md).
 
+**Secure the webhook (recommended before exposing the bot beyond localhost):** WAHA can sign every webhook. Put one random secret in `.env` as
+`WHATSAPP_HOOK_HMAC_KEY=<long random string>` (WAHA reads this file through docker compose; the bot reads the same variable), restart both, and the bot
+rejects anything not signed with it (HTTP 401). Until it is set the bot logs a warning at startup. Details and an optional token mode: `.env.example`.
+
 Load and abuse testing: `scripts/stress_test.py all --quick` (local bot + fake WAHA, never touches WhatsApp).
 
 Testing is described in [docs/TEST_PLAN.md](docs/TEST_PLAN.md) (intent corpus, follow-ups, conversations, failure matrix, live API checks).
