@@ -44,7 +44,7 @@ def fresh_module_caches():
 @pytest.fixture(autouse=True)
 def fresh_webhook_state(request):
     """The webhook keeps a rate limiter, duplicate memory and chat state in module globals; tests that use it start clean."""
-    if request.module.__name__ in {"tests.test_webhook", "tests.test_phase0", "tests.test_webhook_auth"}:
+    if request.module.__name__ in {"tests.test_webhook", "tests.test_phase0", "tests.test_webhook_auth", "tests.test_group_followups"}:
         from app import main
         main.reset_guards()
 

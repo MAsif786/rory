@@ -511,6 +511,21 @@ async def abuse_checks(rig: Rig, limit: int) -> dict:
     await post(event(group, "rory ping", "g-addressed"))
     out["group"] = [t for _, ch, t in await settle(rig, n0) if ch == group]
 
+    n0 = len(rig.waha.records)                                          # (e2) group follow-ups: same person yes, other people and chatter no
+    g2 = "1203631@g.us"
+
+    async def say(sender: str, text: str, mid: str):
+        ev = event(g2, text, mid)
+        ev["payload"]["participant"] = sender
+        await post(ev)
+        return [t for _, ch, t in await settle(rig, len(rig.waha.records), quiet=0.5) if ch == g2]
+
+    await say("a@c.us", "rory time in UTC", "fu1")
+    out["fu_same_person"] = len(await say("a@c.us", "what about Asia/Karachi", "fu2"))
+    out["fu_other_person"] = len(await say("b@c.us", "what about Asia/Tokyo", "fu3"))
+    out["fu_chatter"] = len(await say("a@c.us", "lol nice one", "fu4")) + len(await say("a@c.us", "time in UTC", "fu5"))   # chatter, and a fresh request without a mention
+    out["fu_replies_total"] = len([1 for _, ch, _t in rig.waha.records[n0:] if ch == g2])
+
     n0 = len(rig.waha.records)                                          # (f) thousands of distinct chats, one message each
     t0 = time.time()
     await asyncio.gather(*(post(event(f"many{i}@c.us", "ping", f"m{i}")) for i in range(1500)))
@@ -571,6 +586,9 @@ def run_abuse(args) -> None:
     gate("malformed requests never crash the bot (no 5xx, no dropped connection)", all(0 < s < 500 for s in r["malformed"]), f"{r['malformed']}")
     gate("group chatter is ignored, an addressed message is answered", r["group"] == ["pong 🏓"], f"{r['group']}")
     gate("1500 distinct chats all answered", r["many"] == 1500, f"{r['many']}")
+    gate("group follow-up: the same person's 'what about X' is answered without a mention", r["fu_same_person"] == 1)
+    gate("group follow-up: another person's, chatter, and a fresh unaddressed request are all ignored", r["fu_other_person"] == 0 and r["fu_chatter"] == 0,
+         f"other {r['fu_other_person']}, chatter {r['fu_chatter']}")
     gate("bot alive and healthy after abuse", alive and healthy)
     gate("memory growth < 100 MB", rss1 - rss0 < 100, f"+{rss1 - rss0:.0f} MB")
 
