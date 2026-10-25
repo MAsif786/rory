@@ -16,7 +16,7 @@ SPECS = real_registry().specs()
 SAMPLES = {"place": "lahore", "amount": "100", "base": "usd", "quote": "pkr", "value": "5", "src": "km", "dst": "miles", "expr": "2+2", "pct": "15",
            "n": "200", "ref": "2:255", "lang": "urdu", "kw": "patience", "name": "rahman", "book": "jalalayn", "topic": "volcanoes", "title": "inception",
            "country": "japan", "query": "fastapi", "repo": "psf/requests", "ip": "8.8.8.8", "url": "https://example.com", "section": "tech",
-           "part": "morning", "mood": "tired", "dice": "2d6", "options": "pizza or sushi", "pick": "2"}
+           "part": "morning", "mood": "tired", "when": "tomorrow", "dice": "2d6", "options": "pizza or sushi", "pick": "2"}
 
 
 def fill(phrase: str) -> str:

@@ -5,6 +5,8 @@ from functools import lru_cache
 
 from app.core.schemas import FeatureSpec, Input
 from app.intent.decision import Decision, LastTurn
+from app.nlu.entities import extract_dates, spoken_maths
+from app.nlu.lexicon import lexicon, mentions_synonym, rewrite
 
 _PLACEHOLDER = re.compile(r"\{(\w+)\}")
 
@@ -137,18 +139,66 @@ def explain(text: str, specs: list[FeatureSpec], original: str = "") -> list[tup
     return sorted(found, key=lambda c: c[0], reverse=True)       # stable: equal ranks keep registry order
 
 
+def _finish(best, specs, last, v: str, via: str = "", entities: dict | None = None) -> Decision:
+    """Turn the winning candidate into a Decision: merge entities into declared inputs, ask for what is missing."""
+    _, spec, args = best
+    args = dict(args)
+    for key, value in (entities or {}).items():
+        if key in spec.inputs and not args.get(key):
+            args[key] = value
+    missing = [n for n, i in spec.inputs.items() if i.required and not args.get(n)]
+    if missing:
+        return Decision("clarify", spec.full_name, args, missing, spec.inputs[missing[0]].ask or f"Which {missing[0]}?", via, entities or {})
+    return Decision("match", spec.full_name, args, via=via, entities=entities or {})
+
+
+def _pre_decide(text: str, specs: list[FeatureSpec]) -> tuple | None:
+    """Entity pre-tiers that must run BEFORE ordinary matching, because without them a slot swallows the entity
+    ("weather next monday in karachi" would match with place = "next monday in karachi"). A rewrite is only trusted when the
+    feature it matches can use it: a date needs a `when` input, spoken maths needs the calculator."""
+    raw = " ".join(text.strip().rstrip(".!?؟ ").split())
+    base = strip_wrappers(raw) or raw
+    clean, found = extract_dates(base)
+    if found and clean:
+        ranked = explain(clean, specs)                      # negatives see the cleaned text: date words are handled here, not rejected
+        if ranked and "when" in ranked[0][1].inputs:
+            return ranked[0], clean, "date", found
+    spoken = spoken_maths(base)
+    if spoken != base:
+        ranked = explain(spoken, specs, text)
+        if ranked and ranked[0][1].tool == "calc":
+            return ranked[0], spoken, "maths", {}
+    return None
+
+
+def _best_synonym(text: str, specs: list[FeatureSpec]) -> tuple | None:
+    """The best match after replacing unknown words by their synonyms, or None. Cheap when the message has no synonym word."""
+    table, known = lexicon(specs), _vocab(specs)
+    raw = " ".join(text.strip().rstrip(".!?؟ ").split())
+    base = strip_wrappers(raw) or raw
+    if not mentions_synonym(base, table, known):
+        return None
+    for source in dict.fromkeys((base, _repair_typos(_deelongate(base, known), known))):
+        new, changed = rewrite(source, table, known)
+        if changed and (ranked := explain(new, specs, text)):
+            return ranked[0], new, changed
+    return None
+
+
 def decide(text: str, specs: list[FeatureSpec], last: LastTurn | None = None) -> Decision:
+    if pre := _pre_decide(text, specs):
+        best, v, via, found = pre
+        return _finish(best, specs, last, v, via, found)
+    syn = _best_synonym(text, specs)
     for v in variants(text, specs):
         ranked = explain(v, specs, text)
-        best = ranked[0] if ranked else None
+        best, via = (ranked[0] if ranked else None), ""
+        if syn and (best is None or syn[0][0] > best[0]):         # a synonym reading only wins if it is clearly the stronger one
+            best, v, via = syn[0], syn[1], "synonym"
         if best and best[0][0] == 1 and (fu := _followup(v, specs, last)):
             return fu                   # a bare keyword ("link") is weaker than a follow-up to the last answer ("link 2")
         if best:
-            _, spec, args = best
-            missing = [n for n, i in spec.inputs.items() if i.required and not args.get(n)]
-            if missing:
-                return Decision("clarify", spec.full_name, args, missing, spec.inputs[missing[0]].ask or f"Which {missing[0]}?")
-            return Decision("match", spec.full_name, args)
+            return _finish(best, specs, last, v, via)
         if fu := _followup(v, specs, last):
             return fu
     return Decision("none")

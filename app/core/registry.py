@@ -63,6 +63,7 @@ class Registry:
             raise ValueError("needs at least one @tool.feature")
         shapes: dict[str, str] = {}
         has_session = False
+        self._check_synonyms(tool)
         for feat in tool.features.values():
             spec, where = feat.spec, f"feature {feat.spec.name!r}"
             if not (spec.phrases or spec.keywords):
@@ -96,6 +97,24 @@ class Registry:
         if tool.session_handler and not inspect.iscoroutinefunction(tool.session_handler):
             raise ValueError("session handler must be `async def`")
         return shapes
+
+    def _check_synonyms(self, tool: Tool) -> None:
+        """Each synonym maps one plain word to a word this tool's own phrases use, and never contradicts another tool's or the core table."""
+        from app.nlu.lexicon import CORE
+        own = {w for f in tool.features.values() for src in (*f.spec.phrases, *f.spec.keywords)
+               for w in re.findall(r"[a-z']+", _PLACEHOLDER.sub(" ", src.lower()))}
+        taken = dict(CORE)
+        for other in self.tools.values():
+            taken.update(other.synonyms)
+        for key, value in tool.synonyms.items():
+            if not re.fullmatch(r"[a-z]{2,}", key) or not re.fullmatch(r"[a-z]{2,}", value):
+                raise ValueError(f"synonym {key!r} -> {value!r}: both must be single lowercase words")
+            if key == value:
+                raise ValueError(f"synonym {key!r} maps to itself")
+            if value not in own:
+                raise ValueError(f"synonym {key!r} -> {value!r}: {value!r} does not appear in any phrase or keyword of this tool, so the rewrite could never match")
+            if key in taken and taken[key] != value:
+                raise ValueError(f"synonym {key!r} -> {value!r} contradicts an existing mapping {key!r} -> {taken[key]!r}")
 
     @staticmethod
     def _check_placeholders(phrase: str, spec: FeatureSpec, where: str) -> None:

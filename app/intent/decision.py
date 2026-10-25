@@ -18,6 +18,8 @@ class Decision:
     args: dict = field(default_factory=dict)
     missing: list[str] = field(default_factory=list)   # clarify: inputs still needed
     question: str = ""                                 # clarify: what to ask
+    via: str = ""                                      # how it was understood beyond a direct match: "date", "maths", "synonym"
+    entities: dict = field(default_factory=dict)       # extracted entities, e.g. {"when": "tomorrow"}
 
 
 # An engine is just: (text, feature metadata, last turn) -> Decision. It never sees handlers.

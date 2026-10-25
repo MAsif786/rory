@@ -60,6 +60,7 @@ class FeatureSpec(Schema):
     inputs: dict[str, Input] = Field(default_factory=dict)
     followups: tuple[Followup, ...] = ()
     repeat: Literal["rerun", "reuse"] = "rerun"   # asked again within a minute: run again, or reuse the last answer (lookups)
+    synonyms: tuple[tuple[str, str], ...] = ()    # (word people use, word this tool's phrases use): see app/nlu/lexicon.py
 
     @property
     def full_name(self) -> str:
