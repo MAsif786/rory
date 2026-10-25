@@ -3,10 +3,10 @@ import pytest
 
 from tests import api_fixtures as F
 from tests.helpers import make_bot
-from tests.scenarios import conversations, games
+from tests.scenarios import conversations, games, long_sessions
 from tests.scenarios.dsl import play
 
-ALL = [*conversations.ALL, *games.SCENARIOS]
+ALL = [*conversations.ALL, *games.SCENARIOS, *long_sessions.LONG_SESSIONS]
 
 
 class Clock:

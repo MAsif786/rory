@@ -24,6 +24,8 @@ and where answers could be smarter. Everything here is executable.
 | 4c | **Out of scope** | `tests/test_out_of_scope.py` | honest replies for missing capabilities, statements are not requests, demand is filed by capability |
 | 5 | **Follow-ups (auto-derived)** | `tests/test_followups.py` | every declared follow-up phrase of every tool: stays on the feature, changes only what it declares, keeps the rest, silent without context |
 | 6 | **Conversations** | `tests/test_scenarios.py` + `tests/scenarios/` | multi-turn flows: follow-ups, clarifications, repeats, greetings, help, unknown words, games, expiry, outages |
+| 6b | **Long sessions** | `tests/scenarios/long_sessions.py` | 9 realistic 12-16 turn chats: topic hopping and returning, follow-up chains (place and day persisting), detours from open questions, games interrupted by menus/help/other tools, silences that expire context, an outage mid-chat, repeats inside a flow, synonyms/typos/Roman Urdu/out-of-scope mixed in |
+| 6c | **Synonyms, auto-derived** | `tests/test_synonyms_auto.py` | for EVERY synonym in the lexicon and every phrase that contains its target: the swapped message must mean exactly what the original means (same feature, same arguments); a synonym is never an ordinary word elsewhere; the whole corpus matches identically with the synonym layer off, except an explicit allow-list of deliberate upgrades |
 | 7 | **Failure matrix** | `tests/test_tool_failures.py` | every tool x {connection refused, timeout, hung upstream, HTTP 500, 404, wrong JSON shape, empty result}: friendly message, no leak, recovers on the next message |
 | 8 | **Reply quality** | `tests/test_reply_quality.py` | every example answer is clean (no `None`, HTML, unfilled `{x}`, stray blank lines), short enough to read on a phone, opens with an emoji headline, humanised numbers; every help/menu page is clean |
 | 9a | **Customer safety (Phase 0)** | `tests/test_phase0.py` | non-blocking webhook, duplicate/retried webhooks, rate limits, bounded chat memory, group etiquette, settings validation, per-chat ordering, structured logs with no phone numbers |
@@ -57,6 +59,12 @@ scripts/stress_test.py soak --seconds 600 --rate 80      # leave it running: mem
 Run the full-size modes on a quiet machine: the numbers are real-time and a busy laptop (load average above the core count) inflates them.
 The load generator is a raw-socket client on purpose: httpx cost ~10 ms of CPU per request at 60 connections and made the first version of
 this script measure itself (acknowledgement p95 of 2-3 s against a server that answers in 12 ms).
+
+What the long sessions found and fixed: `and the day after tomorrow` was read as a place (typed date forms were never normalised: `canonical()` now maps
+"the weekend", "this friday", "the day after tomorrow" to the extractor's labels); after a country/wiki/movie/clock/news answer, `and tomorrow` or
+`what about monday` was looked up as a place, topic or title (a follow-up can no longer capture a bare date in a tool without a `when` input; the bot
+says "Tomorrow for what?" instead); date + synonym did not combine (`climate today` lost the date); and tools kept their own clocks (greetings,
+news-pick memory), so time could not be tested: every tool now gets `ctx.now`, the bot's clock.
 
 What the first run found and fixed: malformed webhook bodies (invalid JSON, a JSON list, wrong field types, 2 MB) returned HTTP 500 or dropped
 the connection (now 400/413); background tasks held the connection until the reply was sent, so a busy bot slowed its own acknowledgements

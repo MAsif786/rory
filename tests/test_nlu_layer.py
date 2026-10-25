@@ -210,3 +210,32 @@ def test_the_tool_template_is_a_valid_tool():
     reg.add(tool, "template")
     assert "template" in reg.tools, reg.rejected
     assert decide("greet sara", reg.specs()).args == {"name": "sara"}
+
+
+# --- a date is only a date to tools that take one --------------------------------------------------------------------------
+DATE_FOLLOWUPS = ["and tomorrow", "what about monday", "and the weekend", "how about next friday", "and the day after tomorrow"]
+NO_DATE_FOLLOWUP_FEATURES = [s for s in SPECS if s.followups and "when" not in s.inputs]
+
+
+@pytest.mark.parametrize("spec", NO_DATE_FOLLOWUP_FEATURES, ids=lambda s: s.full_name)
+@pytest.mark.parametrize("text", DATE_FOLLOWUPS)
+def test_a_bare_date_is_not_captured_by_a_follow_up_of_a_tool_without_dates(spec, text):
+    """After a country / wiki / movie / book / clock / news / currency / github answer, 'and tomorrow' used to be looked up as a place or topic."""
+    from app.intent.decision import LastTurn
+    base = decide(spec.examples[0], SPECS)
+    d = decide(text, SPECS, LastTurn(spec.full_name, {k: (v if v is not None else spec.inputs[k].default) for k, v in {**{n: None for n in spec.inputs}, **base.args}.items()}))
+    assert not (d.kind == "followup" and d.feature == spec.full_name), f"{text!r} after {spec.examples[0]!r} was taken as a follow-up: {d.args}"
+
+
+@pytest.mark.parametrize("text", ["and tomorrow", "what about monday", "and the weekend", "tomorrow", "next friday", "the day after tomorrow"])
+def test_a_lone_date_with_no_context_says_it_lost_the_thread(text):
+    from app.replies import classify_unmatched
+    r = classify_unmatched(real_registry(), 1, text)
+    assert "for what?" in r.reply and "lost track" in r.reply and r.kind == "unmatched"
+
+
+@pytest.mark.parametrize("text", ["and the day after tomorrow", "what about the weekend", "and this friday", "how about next monday"])
+def test_typed_date_forms_are_understood_by_weather_followups(text):
+    from app.intent.decision import LastTurn
+    d = decide(text, SPECS, LastTurn("weather.current", {"place": "Lahore", "when": None}))
+    assert d.kind == "followup" and d.args["place"] == "Lahore" and days_ahead(d.args["when"]) not in (None,), d
