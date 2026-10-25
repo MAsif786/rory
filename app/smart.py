@@ -89,12 +89,16 @@ class Bot:
         reply = await self.handle(chat_id, text)
         if not reply:
             last = self.store.get(chat_id).repeat
-            trace.note(kind="fallback", feature=None)
-            log.info("unmatched: %r", text[:200])          # scripts/quality_report.py --log reads these to find what to teach the bot
+            result = replies.classify_unmatched(self.registry, last.count if last else 1, text)
+            reply = result.reply
+            trace.note(kind="fallback" if result.kind == "unmatched" else "out_of_scope", feature=result.category)
+            log.info("%s: %r", result.kind, text[:200])          # scripts/quality_report.py --log reads these to find what to teach the bot
             if self.recorder:
-                near = inbox.nearest_example(text, self.registry.specs())
-                self.recorder.record("unmatched", text, chat_id, nearest=near[0] if near else None, feature=near[1] if near else None)
-            reply = replies.not_understood(self.registry, last.count if last else 1, text)
+                if result.kind == "out_of_scope":                # understood but not offered: filed by capability so demand can be counted
+                    self.recorder.record("out_of_scope", text, chat_id, feature=result.category)
+                else:
+                    near = inbox.nearest_example(text, self.registry.specs())
+                    self.recorder.record("unmatched", text, chat_id, nearest=near[0] if near else None, feature=near[1] if near else None)
         return tidy(reply)
 
     async def _run(self, chat_id: str, feature: str, args: dict, ctx: Context,

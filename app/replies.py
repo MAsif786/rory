@@ -5,6 +5,7 @@ Format:  <emoji> *Title*  →  blank line  →  body  →  blank line  →  opti
 import difflib
 import random
 import re
+from dataclasses import dataclass
 
 from app.core.registry import Registry
 from app.core.schemas import FeatureSpec
@@ -75,29 +76,90 @@ def _suggestion(registry: Registry, text: str) -> str | None:
     return examples[close[0]] if close else None
 
 
-def not_understood(registry: Registry, times: int = 1, text: str = "") -> str:
-    """The fallback when nothing matched. It tries to be useful: acknowledge small talk, suggest a close example for a
-    typo, offer a Wikipedia lookup for a short unknown word, or show real examples. Asked again: say so, don't repeat."""
-    clean = " ".join(re.sub(r"[^\w\s👍🙏😂🙂😊]", "", text.lower()).split())
+@dataclass
+class Unmatched:
+    """What to say about a message nothing could handle, and how to file it in the improvement inbox."""
+    reply: str
+    kind: str = "unmatched"              # "unmatched" (not understood) | "out_of_scope" (understood, but not something Rory does)
+    category: str | None = None          # for out_of_scope: which missing capability (reminders, music, orders...), counted by demand
+
+
+# Things people ask a helper bot that Rory deliberately does not do (yet). Each is answered honestly and logged as demand for a new tool.
+CAPABILITY_GAPS = [
+    ("orders", r"\b(?:order|buy|purchase|book (?:me )?(?:a |an |the )?(?:taxi|cab|flight|ticket|tickets|table|hotel|room|ride))\b|\bwhere can i buy\b",
+     "🛒 I can't place orders or make bookings."),
+    ("reminders", r"\b(?:alarm|remind(?:er)?s?|timer|schedule|appointment)\b", "⏰ Reminders and alarms aren't available yet."),
+    ("calls", r"^(?:please )?(?:call|phone|dial|ring)\b|\b(?:can|could|will|would) (?:you|u) (?:call|phone|ring)\b", "📞 I can't make calls."),
+    ("messaging", r"\b(?:send|write|compose) (?:an? |the )?(?:e-?mail|sms|text|message|whatsapp)\b|\be-?mail\b", "✉️ I can't send messages for you."),
+    ("music", r"\b(?:music|song|songs|spotify|playlist|play some)\b", "🎵 I can't play music."),
+    ("smart_home", r"\bturn (?:on|off)\b|\b(?:lights?|thermostat|air conditioner|the (?:tv|fan|door))\b", "🏠 I can't control devices."),
+    ("translation", r"\btranslat(?:e|ion)\b", "🌐 Translation isn't available yet."),
+    ("writing", r"\bwrite (?:me )?(?:an? |the )?(?:poem|story|essay|letter|code|email|speech)\b|\b(?:poem|essay)\b", "✍️ I can't write long texts."),
+    ("prices", r"\b(?:price|prices|rate|stock|stocks|share price|bitcoin|crypto|ethereum)\b", "📈 Prices and stocks aren't available yet."),
+    ("scores", r"\b(?:score|scores|match|fixtures?|standings|cricket|football|ipl|psl)\b", "🏏 Live scores aren't available yet."),
+    ("directions", r"\b(?:directions?|route|navigate|map|nearest|near me|distance (?:to|from))\b", "🗺️ Directions and maps aren't available yet."),
+    ("help_with_tasks", r"\b(?:fix|repair|install|download|upload|delete|cancel)\b", "🔧 I can't do that kind of task."),
+]
+_CAPS = [(key, re.compile(rx, re.I), msg) for key, rx, msg in CAPABILITY_GAPS]
+REQUEST = re.compile(r"^(?:(?:can|could|will|would) (?:you|u)\b|please\b|pls\b|i (?:want|need|wanna|would like|'d like)\b|(?:order|buy|book|call|send|set|turn|open|play|write|make|find|get|show|give|help|remind|translate|download|install|fix|create|schedule|cancel|delete|search)\b)", re.I)
+QUESTION_START = re.compile(r"^(?:is|are|was|were|what|what's|whats|how|when|where|why|who|does|do|did|will|can|could)\b", re.I)
+FIRST_PERSON = re.compile(r"^(?:i|im|i'm|i am|ive|i've|ill|i'll|my|me|we|our|it|its|it's|this|that|he|she|they)\b", re.I)
+STATEMENT = re.compile(r"\b(?:is|are|was|were|am|has|have|had|love|loved|like|liked|hate|hated|enjoy|enjoyed)\b", re.I)
+ABOUT_BOT = re.compile(r"^(?:what(?:'s| is) your|do you (?:like|have|know|eat|sleep|love|think)|are you|your (?:name|age|favou?rite)|how old are you|where (?:do you|are you))", re.I)
+
+
+SHOWCASE = ["weather", "news", "currency", "wiki", "quran", "calc", "clock", "fun", "dice", "country", "movie", "book"]     # what to mention first
+
+
+def _can_do(registry: Registry) -> str:
+    """One line of what Rory can do, most useful first (not alphabetical: a list starting with 'books, calculator' undersells it)."""
+    order = {name: i for i, name in enumerate(SHOWCASE)}
+    tools = sorted((t for t in registry.tools.values() if not _is_game(t)), key=lambda t: (order.get(t.name, len(order)), t.name))
+    names = ", ".join(t.title.lower() for t in tools[:7])
+    games = " and games" if any(_is_game(t) for t in registry.tools.values()) else ""
+    return f"I can help with {names}{games}."
+
+
+def classify_unmatched(registry: Registry, times: int = 1, text: str = "") -> Unmatched:
+    """The fallback when nothing matched. It tries to be useful: acknowledge small talk, suggest a close example for a typo,
+    say plainly when a request is outside what Rory does (and count it as demand), offer a Wikipedia lookup for a short unknown word,
+    or show real examples. Asked again: say so, don't repeat."""
+    clean = " ".join(re.sub(r"[^\w\s👍🙏😂🙂😊']", "", text.lower()).split())
+    category = next(((k, msg) for k, rx, msg in _CAPS if rx.search(clean)), None)
+    # a request, or a short noun phrase / question about something Rory doesn't do ("bitcoin price", "is bitcoin going up"): never a statement
+    asks = bool(REQUEST.match(clean)) or (category is not None and not ABOUT_BOT.match(clean) and (
+        bool(QUESTION_START.match(clean)) or (len(clean.split()) <= 6 and not FIRST_PERSON.match(clean) and not STATEMENT.search(clean))))
     if times > 1:
-        return "🤔 Still not sure what you mean. Try rephrasing, or send *help* to see what I can do."
+        if asks:
+            return Unmatched(f"🙏 That's still something I can't do. {_can_do(registry)} Send *help* for the full list.", "out_of_scope", category[0] if category else None)
+        return Unmatched("🤔 Still not sure what you mean. Try rephrasing, or send *help* to see what I can do.")
     if clean in ACKS:
-        return random.choice(ACK_REPLIES)
+        return Unmatched(random.choice(ACK_REPLIES))
     if close := _suggestion(registry, text):
-        return f"🤔 I didn't get that. Did you mean _{close}_?"
-    if re.match(r"^(?:i|im|i'm|i am|ive|i've|ill|i'll|my|me|we|our|you|your|youre|you're|it|its|it's|this|that)\b", clean):
-        return "🙂 Thanks for telling me! I'm best with questions and little tasks — send *help* to see what I can do."
+        return Unmatched(f"🤔 I didn't get that. Did you mean _{close}_?")
+    if ABOUT_BOT.match(clean):
+        return Unmatched("😄 I'm just a helper bot, so no favourites or feelings to share! Ask me something I can look up or work out — send *help* to see what.",
+                         "out_of_scope", "about_bot")
+    if asks:
+        first = f"{category[1]} " if category else "🙏 That's outside what I can do right now. "
+        return Unmatched(f"{first}{_can_do(registry)}\n\n{tip('Send *help* to see everything')}", "out_of_scope", category[0] if category else None)
+    if re.match(r"^(?:i|im|i'm|i am|ive|i've|ill|i'll|my|me|we|our|you|your|youre|you're|it|its|it's|this|that)\b", clean) or STATEMENT.search(clean):
+        return Unmatched("🙂 Thanks for telling me! I'm best with questions and little tasks — send *help* to see what I can do.")
     if m := re.match(r"^(?:what|how) about (.+)$", clean):          # a follow-up with nothing to follow
-        return (f"🤔 What about *{m.group(1)}*? I've lost track of what we were talking about.\n\n"
-                + tip(f"Ask in full, e.g. _weather in {m.group(1)}_ — or send *help* to see what I can do"))
+        return Unmatched(f"🤔 What about *{m.group(1)}*? I've lost track of what we were talking about.\n\n"
+                         + tip(f"Ask in full, e.g. _weather in {m.group(1)}_ — or send *help* to see what I can do"))
     if (0 < len(clean.split()) <= 3 and clean.replace(" ", "").isalpha() and "wiki" in registry.tools
             and clean.split()[0] not in QUESTION_WORDS):
-        return (f"🤔 I don't know *{clean}* yet.\n\n"
-                + tip(f"Send _tell me about {clean}_ to look it up on Wikipedia, or *help* to see what I can do"))
+        return Unmatched(f"🤔 I don't know *{clean}* yet.\n\n"
+                         + tip(f"Send _tell me about {clean}_ to look it up on Wikipedia, or *help* to see what I can do"))
     answers = [t for t in registry.tools.values() if any(f.spec.kind == "answer" for f in t.features.values())]
     examples = [ex for t in answers for ex in _examples(t)[:1]][:4]
     hint = ("Try " + " · ".join(f"_{e}_" for e in examples) + " — or send *menu*") if examples else "Send *menu* to see what I can do"
-    return f"🤔 I didn't get that.\n\n{tip(hint)}"
+    return Unmatched(f"🤔 I didn't get that.\n\n{tip(hint)}")
+
+
+def not_understood(registry: Registry, times: int = 1, text: str = "") -> str:
+    return classify_unmatched(registry, times, text).reply
 
 
 def _feature_lines(spec: FeatureSpec) -> list[str]:

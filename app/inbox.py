@@ -2,6 +2,7 @@
 
 Recorded (one JSON object per line in `data/unmatched.jsonl`, never committed):
   unmatched    nothing understood the message
+  out_of_scope understood, but not something Rory does (feature = the missing capability: reminders, music, prices...): demand for new tools
   tool_error   a tool failed (generic / network error) for a message that WAS understood
 Chat ids are stored only as a short hash; the message text is kept (it is what you need to improve the bot) and pruned after
 UNMATCHED_RETENTION_DAYS. Review with `scripts/unmatched.py`."""
@@ -107,6 +108,15 @@ def group_entries(entries: list[dict], specs=(), reviewed: set[str] = frozenset(
         if specs and (near := nearest_example(g.text, specs)):
             g.nearest, g.suggested = near
     return sorted(groups.values(), key=lambda g: (-g.count, -g.last))
+
+
+def capability_demand(entries: list[dict]) -> list[tuple[str, int]]:
+    """Which missing capabilities users ask for most: [(capability, requests)], biggest first. This is the tool roadmap, ranked by real demand."""
+    counts: dict[str, int] = defaultdict(int)
+    for e in entries:
+        if e.get("kind") == "out_of_scope":
+            counts[e.get("feature") or "other"] += 1
+    return sorted(counts.items(), key=lambda kv: -kv[1])
 
 
 def load_reviewed(path: str | Path) -> set[str]:

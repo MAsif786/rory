@@ -265,8 +265,12 @@ def inbox_section(path: str):
     reviewed_path = Path(path).with_name(Path(path).stem + ".reviewed.json")
     rows = group_entries(entries, SPECS, load_reviewed(reviewed_path))
     print(f"  {len(entries)} recorded, {len(rows)} distinct message(s) still to review (scripts/unmatched.py list)")
+    from app.inbox import capability_demand
+    for cap, n in capability_demand(entries)[:5]:
+        print(f"    demand: {cap} x{n}")
+        improve(f"users asked {n}x for a capability Rory lacks: {cap} (candidate for a new tool)")
     for g in rows[:10]:
-        kind = "tool failed" if "tool_error" in g.kinds else "not understood"
+        kind = "tool failed" if "tool_error" in g.kinds else "out of scope" if "out_of_scope" in g.kinds else "not understood"
         print(f"    {g.count:>3}x {g.sample!r} [{kind}]" + (f"  ~ {g.nearest!r} ({g.suggested})" if g.nearest else ""))
         improve(f"inbox ({g.count}x, {kind}): {g.sample!r}" + (f" ~ {g.suggested}" if g.suggested else ""))
 

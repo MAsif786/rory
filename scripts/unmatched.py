@@ -23,7 +23,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from app.core.registry import Registry  # noqa: E402
-from app.inbox import Recorder, corpus_lines, group_entries, load_reviewed, normalise, read_entries, save_reviewed  # noqa: E402
+from app.inbox import Recorder, capability_demand, corpus_lines, group_entries, load_reviewed, normalise, read_entries, save_reviewed  # noqa: E402
 from app.settings import get_settings  # noqa: E402
 
 
@@ -38,7 +38,7 @@ def main() -> int:
     sub = ap.add_subparsers(dest="cmd", required=True)
     for name in ("list", "corpus", "review"):
         p = sub.add_parser(name)
-        p.add_argument("--kind", choices=["unmatched", "tool_error"], help="only this kind")
+        p.add_argument("--kind", choices=["unmatched", "out_of_scope", "tool_error"], help="only this kind")
         p.add_argument("--since", type=float, metavar="DAYS", help="only the last N days")
         p.add_argument("--min", type=int, default=1, metavar="N", help="only messages seen at least N times")
         p.add_argument("--limit", type=int, default=30)
@@ -72,6 +72,8 @@ def main() -> int:
         fails = Counter(e.get("feature") for e in entries if e["kind"] == "tool_error")
         if fails:
             print("failing tools: " + ", ".join(f"{f} x{n}" for f, n in fails.most_common()))
+        if demand := capability_demand(entries):
+            print("missing capabilities users asked for: " + ", ".join(f"{k} x{n}" for k, n in demand))
         top = Counter(e["chat"] for e in entries).most_common(3)
         print("busiest chats (hashed): " + ", ".join(f"{c} x{n}" for c, n in top))
         print(f"open (unreviewed) distinct messages: {len(group_entries(entries, specs, load_reviewed(reviewed_path)))}")
@@ -84,9 +86,11 @@ def main() -> int:
     if args.cmd == "list":
         print(f"{len(groups)} distinct message(s) to review" + (" (including reviewed)" if args.all else "") + f", showing {min(len(groups), args.limit)}:\n")
         for g in groups[: args.limit]:
-            tag = "TOOL FAILED" if "tool_error" in g.kinds else "not understood"
+            tag = "TOOL FAILED" if "tool_error" in g.kinds else "out of scope" if "out_of_scope" in g.kinds else "not understood"
             print(f"{g.count:>4}x  {g.sample!r}   [{tag}; {len(g.chats)} chat(s); last {when(g.last)}]")
-            if "tool_error" in g.kinds:
+            if "out_of_scope" in g.kinds:
+                print(f"       wanted: {', '.join(sorted(g.features)) or 'something Rory does not offer'}  (a new tool would serve this)")
+            elif "tool_error" in g.kinds:
                 print(f"       tool: {', '.join(sorted(g.features))}  (the message was understood; the tool failed: check its upstream / logs)")
             elif g.nearest:
                 print(f"       ~ nearest: {g.nearest!r} ({g.suggested})")
