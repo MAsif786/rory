@@ -19,6 +19,8 @@ python -m venv .venv && .venv/bin/pip install -r requirements.txt -r requirement
 
 Messages Rory could not answer are saved to `data/unmatched.jsonl`; review them with `scripts/unmatched.py list` ([how it fits in](docs/TEST_PLAN.md)).
 
+Language understanding: what exists and what is planned is in [docs/NLU_CAPABILITIES.md](docs/NLU_CAPABILITIES.md); the roadmap is in [docs/ROADMAP.md](docs/ROADMAP.md).
+
 Testing is described in [docs/TEST_PLAN.md](docs/TEST_PLAN.md) (intent corpus, follow-ups, conversations, failure matrix, live API checks).
 
 ## What Rory can do

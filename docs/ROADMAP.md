@@ -53,6 +53,8 @@ Rory's core already speaks `chat_id + text -> reply`. Make that explicit and add
 
 ## Phase 3 - Understanding more (rolling, driven by the log)
 
+Detailed status, evidence and step-by-step plan for this phase (entities, synonyms, confidence, multi-intent): **`docs/NLU_CAPABILITIES.md`**.
+
 Order is set by `quality_report.py --log`, but the known backlog (`GAPS`) already points at the work:
 
 1. **Open-question fallback**: "who invented the telephone", "when was Pakistan founded", "how tall is Everest" -> try Wikipedia
