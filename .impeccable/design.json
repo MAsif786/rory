@@ -1,0 +1,320 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-25T15:37:21+00:00",
+  "title": "Design System: Rory Web Chat",
+  "extensions": {
+    "colorMeta": {
+      "signal-teal": {
+        "role": "primary",
+        "displayName": "Signal Teal",
+        "canonical": "oklch(0.5 0.12 195)",
+        "tonalRamp": [
+          "oklch(0.15 0.067 195)",
+          "oklch(0.28 0.084 195)",
+          "oklch(0.4 0.100 195)",
+          "oklch(0.52 0.116 195)",
+          "oklch(0.64 0.108 195)",
+          "oklch(0.76 0.092 195)",
+          "oklch(0.87 0.078 195)",
+          "oklch(0.95 0.067 195)"
+        ]
+      },
+      "on-signal-teal": {
+        "role": "primary",
+        "displayName": "On Signal Teal",
+        "canonical": "oklch(0.99 0.005 195)",
+        "tonalRamp": [
+          "oklch(0.15 0.011 195)",
+          "oklch(0.28 0.014 195)",
+          "oklch(0.4 0.017 195)",
+          "oklch(0.52 0.019 195)",
+          "oklch(0.64 0.018 195)",
+          "oklch(0.76 0.015 195)",
+          "oklch(0.87 0.013 195)",
+          "oklch(0.95 0.011 195)"
+        ]
+      },
+      "teal-wash": {
+        "role": "primary",
+        "displayName": "Teal Wash",
+        "canonical": "oklch(0.94 0.03 195)",
+        "tonalRamp": [
+          "oklch(0.15 0.028 195)",
+          "oklch(0.28 0.035 195)",
+          "oklch(0.4 0.042 195)",
+          "oklch(0.52 0.048 195)",
+          "oklch(0.64 0.045 195)",
+          "oklch(0.76 0.038 195)",
+          "oklch(0.87 0.032 195)",
+          "oklch(0.95 0.028 195)"
+        ]
+      },
+      "cool-paper": {
+        "role": "neutral",
+        "displayName": "Cool Paper",
+        "canonical": "oklch(0.975 0.006 250)",
+        "tonalRamp": [
+          "oklch(0.15 0.011 250)",
+          "oklch(0.28 0.014 250)",
+          "oklch(0.4 0.017 250)",
+          "oklch(0.52 0.019 250)",
+          "oklch(0.64 0.018 250)",
+          "oklch(0.76 0.015 250)",
+          "oklch(0.87 0.013 250)",
+          "oklch(0.95 0.011 250)"
+        ]
+      },
+      "clean-sheet": {
+        "role": "neutral",
+        "displayName": "Clean Sheet",
+        "canonical": "oklch(0.995 0.003 250)",
+        "tonalRamp": [
+          "oklch(0.15 0.011 250)",
+          "oklch(0.28 0.014 250)",
+          "oklch(0.4 0.017 250)",
+          "oklch(0.52 0.019 250)",
+          "oklch(0.64 0.018 250)",
+          "oklch(0.76 0.015 250)",
+          "oklch(0.87 0.013 250)",
+          "oklch(0.95 0.011 250)"
+        ]
+      },
+      "night-ink": {
+        "role": "neutral",
+        "displayName": "Night Ink",
+        "canonical": "oklch(0.24 0.02 255)",
+        "tonalRamp": [
+          "oklch(0.15 0.017 255)",
+          "oklch(0.28 0.021 255)",
+          "oklch(0.4 0.025 255)",
+          "oklch(0.52 0.029 255)",
+          "oklch(0.64 0.027 255)",
+          "oklch(0.76 0.023 255)",
+          "oklch(0.87 0.019 255)",
+          "oklch(0.95 0.017 255)"
+        ]
+      },
+      "slate-note": {
+        "role": "neutral",
+        "displayName": "Slate Note",
+        "canonical": "oklch(0.47 0.02 255)",
+        "tonalRamp": [
+          "oklch(0.15 0.017 255)",
+          "oklch(0.28 0.021 255)",
+          "oklch(0.4 0.025 255)",
+          "oklch(0.52 0.029 255)",
+          "oklch(0.64 0.027 255)",
+          "oklch(0.76 0.023 255)",
+          "oklch(0.87 0.019 255)",
+          "oklch(0.95 0.017 255)"
+        ]
+      },
+      "hairline": {
+        "role": "neutral",
+        "displayName": "Hairline",
+        "canonical": "oklch(0.89 0.01 250)",
+        "tonalRamp": [
+          "oklch(0.15 0.011 250)",
+          "oklch(0.28 0.014 250)",
+          "oklch(0.4 0.017 250)",
+          "oklch(0.52 0.019 250)",
+          "oklch(0.64 0.018 250)",
+          "oklch(0.76 0.015 250)",
+          "oklch(0.87 0.013 250)",
+          "oklch(0.95 0.011 250)"
+        ]
+      },
+      "alert-red": {
+        "role": "semantic",
+        "displayName": "Alert Red",
+        "canonical": "oklch(0.5 0.17 27)",
+        "tonalRamp": [
+          "oklch(0.15 0.095 27)",
+          "oklch(0.28 0.120 27)",
+          "oklch(0.4 0.142 27)",
+          "oklch(0.52 0.164 27)",
+          "oklch(0.64 0.153 27)",
+          "oklch(0.76 0.131 27)",
+          "oklch(0.87 0.110 27)",
+          "oklch(0.95 0.095 27)"
+        ]
+      },
+      "control-edge": {
+        "role": "neutral",
+        "displayName": "Control Edge",
+        "canonical": "oklch(0.62 0.02 255)",
+        "tonalRamp": [
+          "oklch(0.15 0.011 250)",
+          "oklch(0.28 0.014 250)",
+          "oklch(0.4 0.017 250)",
+          "oklch(0.52 0.019 250)",
+          "oklch(0.64 0.018 250)",
+          "oklch(0.76 0.015 250)",
+          "oklch(0.87 0.013 250)",
+          "oklch(0.95 0.011 250)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "Intro headline only."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "The Rory name in the header."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Messages."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Name row above replies."
+      }
+    },
+    "shadows": [
+      {
+        "name": "input-focus-halo",
+        "value": "0 0 0 3px var(--accent-soft)",
+        "purpose": "The only non-border emphasis: halo around the focused message input."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-out-expo",
+        "value": "cubic-bezier(0.16, 1, 0.3, 1)",
+        "purpose": "Message arrival, chip press, send hover."
+      },
+      {
+        "name": "arrive",
+        "value": "0.35s, 6px rise and fade",
+        "purpose": "New messages."
+      },
+      {
+        "name": "state",
+        "value": "0.15s",
+        "purpose": "Color and border changes on chips and buttons."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "phone",
+        "value": "30rem"
+      },
+      {
+        "name": "typeahead-compact",
+        "value": "40rem"
+      },
+      {
+        "name": "column",
+        "value": "44rem (content width; regions are full-bleed)"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Your message",
+      "kind": "custom",
+      "refersTo": "bubble-me",
+      "description": "The visitor's message: solid teal, 4px corner at the bottom right.",
+      "html": "<div class=\"ds-me\">weather in lahore</div>",
+      "css": ".ds-me{background:oklch(0.5 0.12 195);color:oklch(0.99 0.005 195);padding:0.55rem 0.95rem;border-radius:14px 14px 4px 14px;max-width:85%;margin-left:auto;width:fit-content;font-family: ui-rounded, 'SF Pro Rounded', system-ui, sans-serif;}"
+    },
+    {
+      "name": "Rory's reply",
+      "kind": "custom",
+      "refersTo": "bubble-rory",
+      "description": "A reply: clean sheet with a hairline border, tool label above, time and copy below.",
+      "html": "<div class=\"ds-rory\"><div class=\"ds-name\">Rory · Weather</div><div class=\"ds-reply\"><b>Lahore, Pakistan</b><br>Clear sky · 22°C</div><div class=\"ds-meta\">8:26 PM <span>Copy</span></div></div>",
+      "css": ".ds-rory{max-width:36rem;font-family: ui-rounded, 'SF Pro Rounded', system-ui, sans-serif;} .ds-name{font-size:0.75rem;font-weight:600;color:oklch(0.47 0.02 255);letter-spacing:0.02em;margin-bottom:0.3rem} .ds-reply{background:oklch(0.995 0.003 250);color:oklch(0.24 0.02 255);border:1px solid oklch(0.89 0.01 250);padding:0.65rem 0.95rem;border-radius:4px 14px 14px 14px;line-height:1.55} .ds-meta{font-size:0.75rem;color:oklch(0.47 0.02 255);margin-top:0.2rem} .ds-meta span{margin-left:0.6rem}"
+    },
+    {
+      "name": "Chip",
+      "kind": "chip",
+      "refersTo": "chip",
+      "description": "Example phrase or one-tap next step.",
+      "html": "<button class=\"ds-chip\">weather in lahore</button>",
+      "css": ".ds-chip{font-family: ui-rounded, 'SF Pro Rounded', system-ui, sans-serif;border:1px solid oklch(0.62 0.02 255);background:oklch(0.995 0.003 250);color:oklch(0.24 0.02 255);border-radius:999px;padding:0.5rem 0.95rem;min-height:2.5rem;font-size:0.9375rem;cursor:pointer;transition:border-color .15s,background-color .15s,transform .2s cubic-bezier(.16,1,.3,1)} .ds-chip:hover{border-color:oklch(0.5 0.12 195);background:oklch(0.94 0.03 195)} .ds-chip:active{transform:scale(.97)} .ds-chip:focus-visible{outline:2px solid oklch(0.5 0.12 195);outline-offset:2px}"
+    },
+    {
+      "name": "Ghost button",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "Quiet header action.",
+      "html": "<button class=\"ds-ghost\">New chat</button>",
+      "css": ".ds-ghost{font-family: ui-rounded, 'SF Pro Rounded', system-ui, sans-serif;border:1px solid oklch(0.62 0.02 255);background:transparent;border-radius:999px;padding:0.4rem 0.9rem;min-height:2.25rem;font-size:0.875rem;color:oklch(0.47 0.02 255);cursor:pointer;transition:color .15s,border-color .15s} .ds-ghost:hover{color:oklch(0.24 0.02 255);border-color:oklch(0.47 0.02 255)} .ds-ghost:focus-visible{outline:2px solid oklch(0.5 0.12 195);outline-offset:2px}"
+    },
+    {
+      "name": "Send button",
+      "kind": "button",
+      "refersTo": "button-send",
+      "description": "Primary action; teal circle with an up-arrow.",
+      "html": "<button class=\"ds-send\" aria-label=\"Send message\"><svg viewBox=\"0 0 24 24\" width=\"20\" height=\"20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M12 19V5\"/><path d=\"m5 12 7-7 7 7\"/></svg></button>",
+      "css": ".ds-send{display:grid;place-items:center;width:2.75rem;height:2.75rem;border:0;border-radius:50%;background:oklch(0.5 0.12 195);color:oklch(0.99 0.005 195);cursor:pointer;transition:transform .2s cubic-bezier(.16,1,.3,1)} .ds-send:hover{transform:translateY(-1px)} .ds-send:active{transform:scale(.94)} .ds-send:focus-visible{outline:2px solid oklch(0.5 0.12 195);outline-offset:2px}"
+    },
+    {
+      "name": "Message input",
+      "kind": "input",
+      "refersTo": "input-message",
+      "description": "Rounded growing textarea with a teal focus halo.",
+      "html": "<input class=\"ds-input\" placeholder=\"Try: weather in lahore\">",
+      "css": ".ds-input{font-family: ui-rounded, 'SF Pro Rounded', system-ui, sans-serif;width:100%;min-height:2.75rem;border:1px solid oklch(0.62 0.02 255);background:oklch(0.995 0.003 250);color:oklch(0.24 0.02 255);border-radius:22px;padding:0.65rem 1rem;font-size:1rem;caret-color:oklch(0.5 0.12 195)} .ds-input::placeholder{color:oklch(0.47 0.02 255);opacity:1} .ds-input:focus{outline:none;border-color:oklch(0.5 0.12 195);box-shadow:0 0 0 3px oklch(0.94 0.03 195)}"
+    },
+    {
+      "name": "Typeahead list",
+      "kind": "custom",
+      "refersTo": "chip",
+      "description": "Docked suggestion list above the input; active row in teal wash.",
+      "html": "<ul class=\"ds-list\"><li class=\"on\"><b>conv</b>ert 50 euros to dollars</li><li><b>conv</b>ert 20 celsius to fahrenheit</li></ul>",
+      "css": ".ds-list{font-family: ui-rounded, 'SF Pro Rounded', system-ui, sans-serif;margin:0;padding:0.2rem;list-style:none;background:oklch(0.995 0.003 250);border:1px solid oklch(0.62 0.02 255);border-radius:14px;color:oklch(0.24 0.02 255)} .ds-list li{padding:0.45rem 0.75rem;border-radius:10px} .ds-list li.on{background:oklch(0.94 0.03 195)}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Quick Counter",
+    "overview": "A fast, honest service desk. You ask, Rory answers, and nothing is performed in between. The interface is a single column on a cool paper-tinted ground: your messages are solid teal, Rory's answers are plain white sheets with a hairline border. The system is deliberately plain because Rory is not an AI and must never look like one.",
+    "keyCharacteristics": [
+      "Flat at rest: hairline borders and tonal layers, no shadows.",
+      "One accent (Signal Teal) that always means \"you\" or \"act\".",
+      "Rounded system face, small type steps, generous line height for reading replies.",
+      "Pill-shaped controls, 14px message bubbles with a 4px \"tail\" corner.",
+      "Light and dark follow the system setting; both are first-class."
+    ],
+    "rules": [
+      {
+        "name": "The One Voice Rule",
+        "body": "Teal means \"you\" or \"do something\". Reply content, labels and chrome never use it, with one exception: links inside replies.",
+        "section": "colors"
+      },
+      {
+        "name": "The Tinted Neutral Rule",
+        "body": "Neutrals carry a hint of the cool hue. Never pure gray, never pure white or black.",
+        "section": "colors"
+      },
+      {
+        "name": "The Weight Over Size Rule",
+        "body": "The header title is only 1.05x the body; weight carries the difference. Do not enlarge chrome text to add hierarchy.",
+        "section": "typography"
+      },
+      {
+        "name": "The Flat-At-Rest Rule",
+        "body": "No box-shadow on bubbles, chips, lists or buttons. Separate a surface with a border or a tonal step, never both a border and a soft shadow.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do keep Signal Teal for the user's own messages, the send button, the avatar, focus and links only.",
+      "Do separate surfaces with one Hairline border or one tonal step, and give controls the stronger Control Edge.",
+      "Do keep every tap target at least 36px tall, and 44px on touch screens, and show a 2px Signal Teal focus ring on :focus-visible.",
+      "Do honor prefers-reduced-motion and prefers-color-scheme.",
+      "Do show which tool produced an answer and give honest, specific example phrases."
+    ],
+    "donts": [
+      "Don't use shadows, glows or glass on bubbles, chips or lists.",
+      "Don't tint Rory's replies teal or add gradients, colored side borders or decorative icons.",
+      "Don't write copy that implies open-ended AI (\"ask anything\"); name real capabilities.",
+      "Don't use emoji as interface icons (emoji belong to reply content only); draw icons as SVG.",
+      "Don't overlay the typeahead on the conversation."
+    ]
+  }
+}

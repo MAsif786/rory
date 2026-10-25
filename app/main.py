@@ -12,6 +12,7 @@ from dataclasses import dataclass
 
 from fastapi import BackgroundTasks, FastAPI, Request
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 from app import replies, trace
 from app.core.context import ContextStore
@@ -26,6 +27,7 @@ from app.intent.rule_based import decide
 from app.logsetup import chat_ref, setup_logging
 from app.settings import get_settings
 from app.smart import Bot
+from app.webchat import BASE as WEB_DIR, router as web_router
 from app import waha
 from app.waha import send_text
 
@@ -69,6 +71,8 @@ async def lifespan(_: FastAPI):
 
 
 app = FastAPI(title="Rory", lifespan=lifespan)
+app.mount("/static", StaticFiles(directory=WEB_DIR / "static"), name="static")
+app.include_router(web_router)
 
 RATE_NOTICE = "⏳ You're sending messages quite fast. Please wait a few seconds and try again."
 TOO_LONG = "✂️ That message is too long for me (max {n} characters). Could you shorten it?"

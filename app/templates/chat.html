@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="light dark">
+  <title>{{ bot_name }} · Chat</title>
+  <meta name="description" content="{{ bot_name }} answers everyday questions: weather, conversions, facts, jokes and games.">
+  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', path='rory.svg') }}">
+  <link rel="stylesheet" href="{{ url_for('static', path='chat.css') }}">
+</head>
+<body>
+  <div class="sr" id="status" role="status" aria-live="polite"></div>
+  <div class="app">
+    <header class="bar">
+      <div class="who">
+        <span class="mark">{% include "_avatar.html" %}</span>
+        <div>
+          <h1>{{ bot_name }}</h1>
+          <p>Everyday answers from real tools</p>
+        </div>
+      </div>
+      <div class="actions">
+        <button type="button" class="ghost" id="help-btn" data-say="help"><span class="long">What can I ask?</span><span class="short">Help</span></button>
+        <button type="button" class="ghost" id="new-chat">New chat</button>
+      </div>
+    </header>
+
+    <main class="scroll" id="scroll">
+      <section class="intro" id="intro">
+        <h2>Jokes, facts, weather, money and a game.</h2>
+        <p>{{ bot_name }} answers a fixed set of everyday requests, the same way every time. Type <b>help</b> to see all of them.</p>
+        <ul class="chips" aria-label="Try one of these">
+          {% for s in suggestions %}
+          <li><button type="button" class="chip" data-say="{{ s }}">{{ s }}</button></li>
+          {% endfor %}
+        </ul>
+      </section>
+      <ol class="log" id="log" role="log" aria-live="polite" aria-label="Conversation"></ol>
+    </main>
+
+    <div class="dock">
+      <div class="chips quick" id="quick" role="group" aria-label="Quick replies"></div>
+      <ul class="suggest" id="suggest" role="listbox" aria-label="Suggestions" hidden></ul>
+    </div>
+    <form class="composer" id="form" autocomplete="off">
+      <label class="sr" for="input">Message {{ bot_name }}</label>
+      <textarea id="input" rows="1" role="combobox" aria-haspopup="listbox" aria-expanded="false" aria-controls="suggest" aria-autocomplete="list" maxlength="{{ max_chars }}" placeholder="Message {{ bot_name }}" enterkeyhint="send"></textarea>
+      <button type="submit" class="send" id="send" aria-label="Send message" disabled>
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5"/><path d="m5 12 7-7 7 7"/></svg>
+      </button>
+    </form>
+  </div>
+  <script type="application/json" id="examples">{{ examples|tojson }}</script>
+  <script src="{{ url_for('static', path='chat.js') }}" defer></script>
+</body>
+</html>
