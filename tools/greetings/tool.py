@@ -1,12 +1,12 @@
 """Greetings and small talk: time-aware hellos, salam, thanks, goodbyes, "who are you". Replies adapt to the hour and to repeats."""
 import random
-import time
 from datetime import datetime
 
 from app.core.schemas import Input
 from app.core.tool import Tool
 
-tool = Tool("greetings", title="Greetings", emoji="👋", description="Say hi, thanks or goodbye, or ask who I am", synonyms={"farewell": "bye", "gratitude": "thanks", "cheerio": "bye", "adieu": "goodbye", "adios": "goodbye", "sayonara": "goodbye", "hullo": "hello"})
+tool = Tool("greetings", title="Greetings", emoji="👋", description="Say hi, thanks or goodbye, or ask who I am", synonyms={"farewell": "bye", "gratitude": "thanks", "cheerio": "bye", "adieu": "goodbye", "adios": "goodbye", "sayonara": "goodbye", "hullo": "hello",
+                      "arrivederci": "goodbye", "goodby": "goodbye", "thankyou": "thanks", "thnx": "thanks", "thanx": "thanks", "tnx": "thanks"})
 
 REPEAT_WINDOW = 600                       # seconds: greet again within this and Rory says "again"
 _last: dict[str, tuple[float, str]] = {}  # chat -> (when, which greeting) we last answered (in memory, like all chat context)
@@ -21,10 +21,9 @@ def _now() -> datetime:
     return datetime.now()
 
 
-def _recall(chat_id: str, key: str) -> str:
+def _recall(chat_id: str, key: str, now: float) -> str:
     """Remember this greeting and say how it relates to the last one: "" (fresh), "again" (a greeting soon after one),
     or "same" (the very same greeting repeated)."""
-    now = time.monotonic()
     when, last_key = _last.get(chat_id, (-REPEAT_WINDOW * 2, ""))
     if len(_last) > 1000:                 # keep memory bounded
         _last.clear()
@@ -49,7 +48,7 @@ SAME = ["😄 You already said that! Hi again.", "We've done this one already �
              "howdy", "hiya", "heya", "greetings", "hi rory", "hello rory", "hey rory", "hi again", "hello again", "hey again"],
     examples=["hi", "hello there"])
 async def hello(ctx):
-    if seen := _recall(ctx.chat_id, "hello"):
+    if seen := _recall(ctx.chat_id, "hello", ctx.now):
         return random.choice(SAME if seen == "same" else AGAIN)
     return f"{random.choice(GREET[daypart(_now().hour)])} I'm Rory. {HINT}"
 
@@ -61,7 +60,7 @@ async def hello(ctx):
              "assalamu alaikum wa rahmatullah", "assalam o alaikum wa rahmatullah"],
     examples=["assalamualaikum", "salam"])
 async def salam(ctx):
-    seen = _recall(ctx.chat_id, "salam")
+    seen = _recall(ctx.chat_id, "salam", ctx.now)
     if seen == "same":
         return "Wa alaikum assalam again 🌙 How can I help?"
     return "Wa alaikum assalam wa rahmatullahi wa barakatuh 🌙" + ("" if seen else " " + HINT)
@@ -74,7 +73,7 @@ async def salam(ctx):
     inputs={"part": Input(required=True, pattern="morning|afternoon|evening|night")})
 async def part_greeting(ctx, part):
     part = part.lower()
-    seen = _recall(ctx.chat_id, f"daypart:{part}")
+    seen = _recall(ctx.chat_id, f"daypart:{part}", ctx.now)
     actual = daypart(_now().hour)
     if seen == "same":
         return random.choice([f"😄 You already wished me good {part}! Good {part} again.", f"Good {part} to you too, again! 😄"])

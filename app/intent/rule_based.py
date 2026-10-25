@@ -203,16 +203,21 @@ def _pre_decide(text: str, specs: list[FeatureSpec]) -> tuple | None:
     feature it matches can use it: a date needs a `when` input, spoken maths needs the calculator."""
     raw = " ".join(text.strip().rstrip(".!?؟ ").split())
     base = strip_wrappers(raw) or raw
-    clean, found = extract_dates(base)
-    if found and clean:
-        ranked = explain(clean, specs)                      # negatives see the cleaned text: date words are handled here, not rejected
-        if ranked and "when" in ranked[0][1].inputs:
-            return ranked[0], clean, "date", found
-    spoken = spoken_maths(base)
-    if spoken != base:
-        ranked = explain(spoken, specs, text)
-        if ranked and ranked[0][1].tool == "calc":
-            return ranked[0], spoken, "maths", {}
+    table, known = lexicon(specs), _vocab(specs)
+    sources = [base]
+    if mentions_synonym(base, table, known):                  # "what's the climate tomorrow": the date and the synonym combine
+        sources.append(rewrite(base, table, known)[0])
+    for source in sources:
+        clean, found = extract_dates(source)
+        if found and clean:
+            ranked = explain(clean, specs)                  # negatives see the cleaned text: date words are handled here, not rejected
+            if ranked and "when" in ranked[0][1].inputs:
+                return ranked[0], clean, "date", found
+        spoken = spoken_maths(source)
+        if spoken != source:
+            ranked = explain(spoken, specs, text)
+            if ranked and ranked[0][1].tool == "calc":
+                return ranked[0], spoken, "maths", {}
     return None
 
 
@@ -249,10 +254,17 @@ def decide(text: str, specs: list[FeatureSpec], last: LastTurn | None = None) ->
     return Decision("none")
 
 
+def _only_a_date(value: str) -> bool:
+    left, found = extract_dates(value)
+    return bool(found) and not left.strip()
+
+
 def _followup(raw: str, specs: list[FeatureSpec], last: LastTurn | None) -> Decision | None:
     spec = next((s for s in specs if s.full_name == last.feature), None) if last else None
     for fu in spec.followups if spec else ():
         hit = _phrase_match(raw, fu.phrases, spec.inputs)
+        if hit and "when" not in spec.inputs and any(_only_a_date(v) for k, v in hit[0].items() if k in fu.overrides):
+            continue                                              # "and tomorrow" must not be looked up as a place / topic / title by a tool without dates
         if hit:
             args = {**last.args, **{k: v for k, v in hit[0].items() if k in fu.overrides}, **fu.sets}
             return Decision("followup", spec.full_name, args)

@@ -73,6 +73,7 @@ class Context:
     chat_id: str
     text: str
     services: Any
+    now: float = 0.0          # seconds on the bot's clock (monotonic): tools use this for "how long ago", never their own clock, so time is testable
 
 
 class UserError(Exception):

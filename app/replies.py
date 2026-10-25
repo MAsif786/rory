@@ -8,6 +8,7 @@ import re
 from dataclasses import dataclass
 
 from app.core.registry import Registry
+from app.nlu.entities import extract_dates
 from app.core.schemas import FeatureSpec
 from app.core.tool import Tool
 from app.format import tip  # noqa: F401  (re-exported: tools and pages share one hint style)
@@ -145,6 +146,11 @@ def classify_unmatched(registry: Registry, times: int = 1, text: str = "") -> Un
         return Unmatched(f"{first}{_can_do(registry)}\n\n{tip('Send *help* to see everything')}", "out_of_scope", category[0] if category else None)
     if re.match(r"^(?:i|im|i'm|i am|ive|i've|ill|i'll|my|me|we|our|you|your|youre|you're|it|its|it's|this|that)\b", clean) or STATEMENT.search(clean):
         return Unmatched("🙂 Thanks for telling me! I'm best with questions and little tasks — send *help* to see what I can do.")
+    if clean:
+        left, found = extract_dates(re.sub(r"^(?:and|also|what about|how about|then)\s+", "", clean))
+        if found and not left.strip():                              # only a date: "and tomorrow", "next monday", "the weekend"
+            return Unmatched(f"📅 {found['when'].capitalize()} for what? I've lost track of what we were talking about.\n\n"
+                             + tip(f"Ask in full, e.g. _weather {found['when']} in lahore_ — or send *help* to see what I can do"))
     if m := re.match(r"^(?:what|how) about (.+)$", clean):          # a follow-up with nothing to follow
         return Unmatched(f"🤔 What about *{m.group(1)}*? I've lost track of what we were talking about.\n\n"
                          + tip(f"Ask in full, e.g. _weather in {m.group(1)}_ — or send *help* to see what I can do"))

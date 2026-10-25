@@ -11,7 +11,7 @@ from app.core.schemas import Followup, Input, UserError
 from app.core.tool import Tool
 from app.format import num, tip
 
-tool = Tool("news", title="News", emoji="📰", description="Today's headlines, or news about any topic", synonyms={"tidings": "news"})
+tool = Tool("news", title="News", emoji="📰", description="Today's headlines, or news about any topic", synonyms={"tidings": "news", "headline": "headlines"})
 
 MAX_ITEMS = 5
 MAX_BYTES = 1_000_000
@@ -78,10 +78,10 @@ _shown: dict[str, tuple[float, list[dict]]] = {}      # chat -> (when, the stori
 SHOWN_TTL = 15 * 60
 
 
-def _remember(chat_id: str, items: list[dict]) -> None:
+def _remember(chat_id: str, items: list[dict], now: float) -> None:
     if len(_shown) > 500:
         _shown.clear()
-    _shown[chat_id] = (time.monotonic(), items)
+    _shown[chat_id] = (now, items)
 
 
 def _describe(n: dict) -> list[str]:
@@ -113,13 +113,13 @@ def format_link(n: dict) -> str:
 
 async def _show(ctx, topic: str | None, pick: int | None) -> str:
     cached = _shown.get(ctx.chat_id)
-    if pick and cached and time.monotonic() - cached[0] < SHOWN_TTL:
+    if pick and cached and ctx.now - cached[0] < SHOWN_TTL:
         items = cached[1]                               # "2" right after a list opens the story that was listed
     else:
         items = await fetch(ctx.services.http, topic)
         if not items:
             raise UserError(f"📰 No recent news found about *{topic}*." if topic else "📰 No headlines right now. Please try again later.")
-        _remember(ctx.chat_id, items)
+        _remember(ctx.chat_id, items, ctx.now)
     if pick:
         if pick > len(items):
             raise UserError(f"📰 Pick a number from 1 to {len(items)}.")

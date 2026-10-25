@@ -3,7 +3,7 @@ from datetime import datetime
 
 from app.core.schemas import Followup, Input, UserError
 from app.core.tool import Tool
-from app.nlu.entities import DATE_WORDS, days_ahead, describe
+from app.nlu.entities import DATE_WORDS, canonical, days_ahead, describe
 
 from . import service
 from .schemas import Day
@@ -49,7 +49,7 @@ def _range(day: Day) -> str:
     negatives=["next week", "tomorrow", "forecast", "whether or not"],
     inputs=INPUTS, followups=FOLLOWUPS)
 async def current(ctx, place, when):
-    if when == "next week":
+    if canonical(when) == "next week":
         return await _week(ctx, place)
     if days_ahead(when) not in (None, 0):                       # "weather tomorrow in karachi" is a question about another day
         return await _day(ctx, place, when)
@@ -75,7 +75,7 @@ async def current(ctx, place, when):
     negatives=["weather in"],
     inputs=INPUTS, followups=FOLLOWUPS)
 async def forecast(ctx, place, when):
-    if when == "next week":
+    if canonical(when) == "next week":
         return await _week(ctx, place)
     if days_ahead(when) not in (None, 0):
         return await _day(ctx, place, when)

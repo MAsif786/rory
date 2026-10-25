@@ -33,7 +33,7 @@ class Bot:
         """Returns the reply, or None when nothing matched (caller decides the fallback)."""
         word = text.strip().lower()
         command = word.lstrip("!/")
-        ctx, chat = Context(chat_id, text, self.services), self.store.get(chat_id)
+        ctx, chat = Context(chat_id, text, self.services, self.store.clock()), self.store.get(chat_id)
 
         # 0. menu and help always work, even mid-game (the game stays active)
         if command in MENU_WORDS or command == "help" or command.startswith("help "):

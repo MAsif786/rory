@@ -26,7 +26,7 @@ _DATES = [
 _COMPILED = [(re.compile(rf"\b(?:{p})\b", re.I), label) for p, label in _DATES]
 
 
-DATE_WORDS = (r"day after tomorrow|tomorrow|tonight|today|weekend|next week|in \d{1,2} days|"
+DATE_WORDS = (r"(?:the )?day after tomorrow|tomorrow|tonight|today|(?:this |the |next |coming )?weekend|next week|in \d{1,2} days|"
               rf"(?:(?:next|this|coming) )?(?:{_WD})")     # for Input(pattern=...) in follow-ups like "and {when}"
 
 
@@ -43,10 +43,17 @@ def extract_dates(text: str) -> tuple[str, dict]:
     return text, {}
 
 
+def canonical(label: str) -> str:
+    """The label as the extractor would have written it: 'the day after tomorrow' -> 'day after tomorrow', 'the weekend' -> 'weekend',
+    'this friday' -> 'friday'. A follow-up like "and the weekend" captures what the user typed; this makes it equal to an extracted date."""
+    label = (label or "").lower().strip()
+    return extract_dates(label)[1].get("when", label) if label else label
+
+
 def days_ahead(label: str, today: date | None = None) -> int | None:
     """How many days from today a `when` label is (0 = today). None for labels we cannot place."""
     today = today or date.today()
-    label = (label or "").lower().strip()
+    label = canonical(label)
     if label in ("", "today", "tonight"):
         return 0
     if label == "tomorrow":
