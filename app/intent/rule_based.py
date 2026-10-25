@@ -1,6 +1,7 @@
 """Rule-based engine: matches messages against the phrases/keywords/negatives/followups tools declare."""
 import difflib
 import re
+from dataclasses import dataclass
 from functools import lru_cache
 
 from app.core.schemas import FeatureSpec, Input
@@ -73,14 +74,17 @@ _VOCAB: dict[tuple, frozenset] = {}
 def _vocab(specs: list[FeatureSpec]) -> frozenset:
     """Every word the installed tools know (phrases, keywords, examples). Cached per set of installed features."""
     key = tuple(s.full_name for s in specs)
-    if key not in _VOCAB:
+    vocab = _VOCAB.get(key)
+    if vocab is None:                                    # the engine runs in worker threads: build locally, publish once, never clear-then-read
         words = set()
         for s in specs:
             for src in (*s.phrases, *s.keywords, *s.examples):
                 words.update(w for w in re.findall(r"[a-z']+", _PLACEHOLDER.sub(" ", src.lower())) if len(w) >= 2)
-        _VOCAB.clear()                                   # only the current registry matters
-        _VOCAB[key] = frozenset(words)
-    return _VOCAB[key]
+        vocab = frozenset(words)
+        if len(_VOCAB) > 8:
+            _VOCAB.clear()
+        _VOCAB[key] = vocab
+    return vocab
 
 
 def _deelongate(text: str, vocab: frozenset) -> str:
@@ -121,20 +125,61 @@ def variants(text: str, specs: list[FeatureSpec]) -> list[str]:
     return out
 
 
+@dataclass
+class _Compiled:
+    """Everything the matcher needs from one feature, built once: compiled phrase regexes (with their specificity score and the literal
+    words a message must contain for the regex to have any chance), and compiled negative / keyword patterns."""
+    spec: FeatureSpec
+    phrases: list[tuple[re.Pattern, int, tuple[str, ...]]]
+    negatives: list[re.Pattern]
+    keywords: list[re.Pattern]
+
+
+_COMPILED: dict[int, _Compiled] = {}
+
+
+def _word_rx(word: str) -> re.Pattern | None:
+    w = normalize(word)
+    return re.compile(rf"(?<!\w){re.escape(w)}(?!\w)") if w else None
+
+
+def _compiled(spec: FeatureSpec) -> _Compiled:
+    c = _COMPILED.get(id(spec))
+    if c is not None and c.spec is spec:
+        return c
+    if len(_COMPILED) > 20_000:                                   # specs are normally created once; this only bounds test churn
+        _COMPILED.clear()
+    phrases = []
+    for ph in spec.phrases:
+        names = _PLACEHOLDER.findall(ph)
+        score = len(_PLACEHOLDER.sub("", ph)) + 5 * any(spec.inputs[n].pattern for n in names) + (0 if names else 1)
+        literal = _PLACEHOLDER.sub(" ", normalize(ph))
+        required = tuple(w for w in re.findall(r"[a-z0-9]+", literal) if len(w) >= 3)       # words with an apostrophe are skipped by the split
+        phrases.append((_compile(ph, spec.inputs), score, required))
+    c = _COMPILED[id(spec)] = _Compiled(spec, phrases, [r for n in spec.negatives if (r := _word_rx(n))], [r for k in spec.keywords if (r := _word_rx(k))])
+    return c
+
+
 def explain(text: str, specs: list[FeatureSpec], original: str = "") -> list[tuple[tuple[int, int], FeatureSpec, dict]]:
     """Every feature that claims the message, best first: [(rank, spec, args)]. Rank is (2, specificity) for a phrase
     match and (1, 0) for a keyword-only match. `decide` takes the first; tests and reports use the whole list to spot ties."""
     t = normalize(text)
     o = normalize(original) if original else t                    # negatives also see the message as typed, before any cleanup
     raw = " ".join(text.strip().rstrip(".!?؟ ").split())        # keeps case, so captured args (URLs, names) stay intact
-    found = []
+    found, lowered, short = [], raw.lower(), len(t.split()) <= KEYWORD_MAX_WORDS
     for spec in specs:
-        if any(normalize(n) and (_has_word(t, n) or _has_word(o, n)) for n in spec.negatives):
+        c = _compiled(spec)
+        if c.negatives and any(rx.search(t) or rx.search(o) for rx in c.negatives):
             continue
-        hit = _phrase_match(raw, spec.phrases, spec.inputs)
-        if hit:
-            found.append(((2, hit[1]), spec, hit[0]))
-        elif len(t.split()) <= KEYWORD_MAX_WORDS and any(_has_word(t, k) for k in spec.keywords):
+        best = None
+        for rx, score, required in c.phrases:
+            if required and not all(w in lowered for w in required):       # cheap substring test before the regex
+                continue
+            if (m := rx.match(raw)) and (best is None or score > best[1]):
+                best = ({k: v.strip() for k, v in m.groupdict().items()}, score)
+        if best:
+            found.append(((2, best[1]), spec, best[0]))
+        elif short and any(rx.search(t) for rx in c.keywords):
             found.append(((1, 0), spec, {}))
     return sorted(found, key=lambda c: c[0], reverse=True)       # stable: equal ranks keep registry order
 

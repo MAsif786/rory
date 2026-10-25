@@ -20,13 +20,15 @@ _CACHE: dict[tuple, dict[str, str]] = {}
 def lexicon(specs: list[FeatureSpec]) -> dict[str, str]:
     """Core table + every installed tool's synonyms. Cached per set of installed features."""
     key = tuple(s.full_name for s in specs)
-    if key not in _CACHE:
+    merged = _CACHE.get(key)
+    if merged is None:                                   # thread-safe: build locally, publish once (the engine runs in worker threads)
         merged = dict(CORE)
         for s in specs:
             merged.update(dict(s.synonyms))
-        _CACHE.clear()
+        if len(_CACHE) > 8:
+            _CACHE.clear()
         _CACHE[key] = merged
-    return _CACHE[key]
+    return merged
 
 
 def rewrite(text: str, table: dict[str, str], known: frozenset) -> tuple[str, list[tuple[str, str]]]:

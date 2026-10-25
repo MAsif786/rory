@@ -1,5 +1,8 @@
 """Routing: one fixed order. Reads Decision and results only - it imports no NLU code."""
+import asyncio
 import logging
+import sys
+from concurrent.futures import ThreadPoolExecutor
 
 from app import replies
 from app import inbox, trace
@@ -10,6 +13,10 @@ from app.core.registry import Registry
 from app.core.schemas import Context, Continue, Finish, PassThrough
 from app.intent.decision import Decision, IntentEngine, LastTurn
 
+# ONE thread for the engine: with several CPU-bound threads the event-loop thread (which sends the webhook acknowledgements) waits
+# behind all of them for the GIL; with one, the loop gets the GIL back every switch interval and stays responsive.
+_ENGINE_THREAD = ThreadPoolExecutor(max_workers=1, thread_name_prefix="rory-engine")
+sys.setswitchinterval(0.001)                  # hand the GIL over every 1 ms instead of 5 ms: acknowledgements are tiny and want it often
 log = logging.getLogger("wa-bot.unmatched")
 STOP_WORDS = {"stop", "quit", "exit"}
 MENU_WORDS = {"menu", "home", "start"}
@@ -61,7 +68,7 @@ class Bot:
         if chat.pending:
             p = chat.pending
             self.store.set_pending(chat_id, None)
-            other = self.engine(text, self.registry.specs(), None)
+            other = await self._decide(text, None)
             if not (other.kind == "match" and other.feature != p.feature):
                 return await self._run(chat_id, p.feature, {**p.args, p.missing[0]: text.strip()}, ctx)
             chat = self.store.get(chat_id)                  # fall through: handle it as a fresh request
@@ -69,7 +76,7 @@ class Bot:
         # 4. intent engine
         key, last = " ".join(word.rstrip(".!?؟ ").split()), chat.repeat
         again = last if last and last.text == key else None          # the same message, sent again within a minute
-        d: Decision = self.engine(text, self.registry.specs(), chat.last_turn)
+        d: Decision = await self._decide(text, chat.last_turn)
         if d.kind in ("match", "followup"):
             spec = self.registry.spec(d.feature)
             if again and again.feature == d.feature and again.reply and spec and spec.repeat == "reuse":
@@ -83,6 +90,11 @@ class Bot:
             return d.question
         self.store.set_repeat(chat_id, Repeat(key, None, None, again.count + 1 if again else 1))
         return None
+
+    async def _decide(self, text: str, last) -> Decision:
+        """The engine is plain CPU-bound Python (1-10 ms). Run it in a worker thread: the GIL still serialises the work, but the event loop
+        gets a turn every few ms, so a burst of messages cannot delay the webhook's acknowledgements or the other chats' I/O."""
+        return await asyncio.get_running_loop().run_in_executor(_ENGINE_THREAD, self.engine, text, self.registry.specs(), last)
 
     async def respond(self, chat_id: str, text: str) -> str:
         """handle(), plus a fallback for messages nothing understood (which changes if it is repeated)."""
