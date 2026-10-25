@@ -5,7 +5,7 @@ import re
 from app.core.schemas import Input, UserError
 from app.core.tool import Tool
 
-tool = Tool("dice", title="Dice", emoji="🎲", description="Coin, dice and decisions")
+tool = Tool("dice", title="Dice", emoji="🎲", description="Coin, dice and decisions", synonyms={"select": "choose"})
 
 
 @tool.feature(

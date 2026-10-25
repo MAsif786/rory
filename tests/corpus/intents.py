@@ -54,7 +54,9 @@ WRAPPED = [
     ("show me the latest news", "news.headlines"), ("please tell me about volcanoes", "wiki.lookup"),
 ]
 
-PROMOTED = [   # promoted after the entity pre-pass (dates, spoken maths) and tool synonyms
+PROMOTED = [   # reviewed synonym additions (see scripts/suggest_synonyms.py)
+    ("thnx", "greetings.thanks"), ("thanx bro", "greetings.thanks"), ("select pizza or sushi", "dice.choose"), ("15 pct of 200", "calc.percent"),
+    ("math 2+2", "calc.calc"), ("top headline", "news.headlines"), ("arrivederci", "greetings.bye"), ("what's the climate tomorrow in oslo", "weather.current"),   # promoted after the entity pre-pass (dates, spoken maths) and tool synonyms
     ("will i need an umbrella next monday in karachi", "weather.forecast"), ("square root of 144", "calc.calc"), ("what's 15 times 4", "calc.calc"),
     ("lahore ka mausam kaisa hai aaj", "weather.current"), ("kal ka mausam lahore", "weather.current"), ("weather tomorrow", "weather.current"),
     ("what's fifteen plus four", "calc.calc"), ("what is twenty percent of fifty", "calc.percent"), ("tell me a jest", "fun.joke"),
