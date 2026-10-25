@@ -24,6 +24,8 @@ Messages Rory could not answer are saved to `data/unmatched.jsonl`; review them 
 
 Language understanding: what exists and what is planned is in [docs/NLU_CAPABILITIES.md](docs/NLU_CAPABILITIES.md); the roadmap is in [docs/ROADMAP.md](docs/ROADMAP.md).
 
+Load and abuse testing: `scripts/stress_test.py all --quick` (local bot + fake WAHA, never touches WhatsApp).
+
 Testing is described in [docs/TEST_PLAN.md](docs/TEST_PLAN.md) (intent corpus, follow-ups, conversations, failure matrix, live API checks).
 
 ## What Rory can do

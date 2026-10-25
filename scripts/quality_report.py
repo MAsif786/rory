@@ -258,6 +258,25 @@ def log_section(path: str):
     gate("no tool crashes in the log", not errors)
 
 
+def stress_section():
+    heading("5b. Stress test (quick): burst, abuse, soak against a local bot and a fake WAHA")
+    import tempfile
+    out_file = Path(tempfile.mkdtemp(prefix="rory-report-")) / "stress.json"
+    run = subprocess.run([sys.executable, "scripts/stress_test.py", "all", "--quick", "--json", str(out_file)], capture_output=True, text=True, cwd=ROOT)
+    try:
+        data = json.loads(out_file.read_text())
+    except (OSError, ValueError):
+        gate("stress test ran", False, (run.stdout + run.stderr)[-300:])
+        return
+    failed = [g for g, ok in data["gates"].items() if not ok]
+    burst = data["metrics"].get("burst", {})
+    print(f"  {len(data['gates']) - len(failed)}/{len(data['gates'])} stress gates passed; burst: ack p95 {burst.get('ack_p95_ms')} ms, "
+          f"{burst.get('throughput_msg_per_s')} msg/s sustained, {burst.get('bot_cpu_ms_per_msg')} ms CPU per message")
+    gate("stress test gates", not failed, f"failed: {failed}" if failed else "")
+    for g in failed:
+        improve(f"stress gate failed: {g}")
+
+
 def inbox_section(path: str):
     from app.inbox import group_entries, load_reviewed, read_entries
     heading(f"7. Improvement inbox ({path})")
@@ -279,6 +298,7 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--tests", action="store_true", help="also run the pytest suite")
     ap.add_argument("--live", action="store_true", help="also run the live API tests (implies --tests)")
+    ap.add_argument("--stress", action="store_true", help="also run the quick stress test (burst, abuse, soak; ~20 s, fully local)")
     ap.add_argument("--log", metavar="FILE", help="analyse a bot log for unmatched messages and tool errors")
     ap.add_argument("--json", metavar="FILE", help="write the report as JSON")
     args = ap.parse_args()
@@ -289,6 +309,8 @@ def main():
     asyncio.run(offline_section())
     if args.tests or args.live:
         pytest_section(args.live)
+    if args.stress:
+        stress_section()
     if args.log:
         log_section(args.log)
     inbox_file = os.environ.get("UNMATCHED_PATH") or "data/unmatched.jsonl"

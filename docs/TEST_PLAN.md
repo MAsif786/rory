@@ -7,6 +7,7 @@ and where answers could be smarter. Everything here is executable.
 .venv/bin/python -m pytest -q                       # ~12 s, offline, 2200+ checks: run before every commit
 .venv/bin/python -m pytest -m live -q               # hits the real APIs (~45 s): "is any tool broken right now?"
 .venv/bin/python scripts/quality_report.py          # scores + improvement candidates; exit 1 if a gate fails
+.venv/bin/python scripts/stress_test.py all --quick # ~20 s: engine scale, burst, abuse, soak against a local bot + fake WAHA (never touches WhatsApp)
 .venv/bin/python scripts/quality_report.py --tests --live --log server.log --json report.json   # everything
 ```
 
@@ -27,11 +28,43 @@ and where answers could be smarter. Everything here is executable.
 | 8 | **Reply quality** | `tests/test_reply_quality.py` | every example answer is clean (no `None`, HTML, unfilled `{x}`, stray blank lines), short enough to read on a phone, opens with an emoji headline, humanised numbers; every help/menu page is clean |
 | 9a | **Customer safety (Phase 0)** | `tests/test_phase0.py` | non-blocking webhook, duplicate/retried webhooks, rate limits, bounded chat memory, group etiquette, settings validation, per-chat ordering, structured logs with no phone numbers |
 | 9 | **Robustness** | `tests/test_robustness.py` | odd/hostile messages (empty, NUL, 3 000 chars, emoji walls, injection strings), 300 seeded random messages, chats stay isolated |
+| 9b | **Stress / load** | `scripts/stress_test.py` (+ `tests/test_stress_smoke.py`) | the real bot process under a 300+ message burst, a soak, floods, retried and malformed webhooks, groups, 1,500 chats; checks every reply arrives once, correct and in order, acknowledgement stays fast, memory stays flat |
 | 10 | **Live smoke** (`-m live`) | `tests/test_live_tools.py` | real API changed/down/slow (> 8 s), answers not about what was asked, follow-ups and link/news flows against the real world |
 | 11 | **Report** | `scripts/quality_report.py` | all of the above as numbers, plus the improvement list and the **log miner** (`--log`) |
 
 Offline tests use `tests/api_fixtures.py` (realistic response for every endpoint) through `tests/helpers.FakeHttp`, which fails the
 way the network does (`httpx.ConnectError`, `ReadTimeout`, real `httpx.Response` with status codes), so the same tool code runs unmodified.
+
+### Stress testing (`scripts/stress_test.py`)
+
+Safe by construction: it starts its **own** bot on a private port with `WAHA_URL` pointing at a **fake WAHA process** that only records
+replies, and a throwaway inbox, so it can never message anyone or touch your running server (a test proves the environment is overridden).
+It drives only pure tools (calculator, ping, greetings, help, unknown text) so it measures Rory, not third-party APIs.
+
+| Mode | What it does | Main gates |
+|---|---|---|
+| `engine` | decision CPU time as the number of tools grows (1x/5x/20x/50x) | 1x p95 < 25 ms; 5x p95 < 60 ms; flags a cache cliff |
+| `burst` | N users x M messages at once, each user's messages in order over one connection | every message gets exactly one reply, correct and **in order per chat**; webhook acknowledgement p95 < 500 ms; reply p95 < 3 s; sustained throughput >= 40 msg/s; memory growth < 150 MB |
+| `soak` | steady msgs/s for minutes across hundreds of chats | no errors, every message answered, latency does not drift, memory flat in the second half |
+| `abuse` | one sender flooding, 25 retries of one message id, an oversized message, malformed/huge bodies, group chatter, 1,500 distinct chats | exactly the rate limit answered + one notice; duplicates answered once; **no 5xx**, no dropped connection; groups silent unless addressed; memory bounded; bot healthy after |
+| `--waha-delay 0.3` | a slow WAHA | the webhook still acknowledges instantly (replies are queued) |
+
+```bash
+scripts/stress_test.py all --quick                       # ~20 s, also run by pytest
+scripts/stress_test.py burst --users 500 --messages 10   # find the limits on a quiet machine
+scripts/stress_test.py soak --seconds 600 --rate 80      # leave it running: memory and latency drift
+```
+Run the full-size modes on a quiet machine: the numbers are real-time and a busy laptop (load average above the core count) inflates them.
+The load generator is a raw-socket client on purpose: httpx cost ~10 ms of CPU per request at 60 connections and made the first version of
+this script measure itself (acknowledgement p95 of 2-3 s against a server that answers in 12 ms).
+
+What the first run found and fixed: malformed webhook bodies (invalid JSON, a JSON list, wrong field types, 2 MB) returned HTTP 500 or dropped
+the connection (now 400/413); background tasks held the connection until the reply was sent, so a busy bot slowed its own acknowledgements
+(now a bounded queue + worker pool, 503 when full); the engine ran on the event loop (now one dedicated thread); `send_text` built a new HTTP
+client per reply (now one pool: CPU per message 11.5 -> 6 ms); the engine recompiled regexes per call (compiled once: 20x tools 488 -> 25 ms).
+
+Measured on a laptop (8 cores, loaded): ~120 messages/s sustained per bot process, acknowledgement p95 about 20 ms during a 3,000 msg/s burst,
+memory +3-16 MB. WhatsApp traffic is typically a few messages per second, so one process has a very large margin.
 
 ## 2. Quality gates (what "good" means)
 
@@ -43,6 +76,7 @@ way the network does (`httpx.ConnectError`, `ReadTimeout`, real `httpx.Response`
 | Every declared phrase routes to its own feature | 100% (913 phrases) | engine test |
 | Order-dependent ties between features | 0 | engine test |
 | Decision time | p95 < 25 ms (currently ~2 ms), adversarial input < 0.5 s | engine test + report |
+| Load | 300-message burst: every reply once, in order; acknowledgement p95 < 500 ms; no 5xx on malformed input | stress test |
 | Tool failure handling | 7 failure modes x every network tool: friendly, no leaks | failure matrix |
 | Reply well-formedness | 0 lint problems in 75 example replies and every help page | quality test |
 | Known-gap backlog | each gap is a strict xfail: fixing one turns the suite red until you promote it | corpus test |
