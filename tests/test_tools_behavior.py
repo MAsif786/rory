@@ -239,3 +239,12 @@ async def test_web_search_needs_a_key_then_returns_results(monkeypatch):
     out = await say(bot, "search for pizza in lahore")
     assert "1. *Best Pizza*" in out and "https://pizza.example" in out
     assert http.calls[-1][1]["q"] == "pizza in lahore" and http.calls[-1][1]["num"] == 5
+
+
+async def test_dice_reply_explains_itself(bot):
+    random.seed(7)
+    out = await say(bot, "Roll 2d6")
+    assert out.startswith("🎲 You rolled *") and "_(2d6: " in out and " + " in out
+    total = int(out.split("*")[1])
+    assert total == sum(int(x) for x in out.split(": ")[1].rstrip(")_").split(" + "))          # the parts add up to the total
+    assert "_(1d6)_" in await say(bot, "roll a dice")

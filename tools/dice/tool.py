@@ -31,8 +31,8 @@ async def roll(ctx, dice):
     if not 1 <= n <= 20 or not 2 <= sides <= 1000:
         raise UserError("🎲 Between 1 and 20 dice, with 2 to 1000 sides each.")
     rolls = [random.randint(1, sides) for _ in range(n)]
-    detail = f" ({' + '.join(map(str, rolls))})" if n > 1 else ""
-    return f"🎲 *{sum(rolls)}*{detail}  — {n}d{sides}"
+    detail = f"{n}d{sides}: {' + '.join(map(str, rolls))}" if n > 1 else f"{n}d{sides}"        # 2d6 = two six-sided dice
+    return f"🎲 You rolled *{sum(rolls)}*  _({detail})_"
 
 
 @tool.feature(

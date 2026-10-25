@@ -83,7 +83,7 @@ class Group:
     suggested: str | None = None                       # feature that example belongs to
 
 
-def nearest_example(text: str, specs, cutoff: float = 0.5) -> tuple[str, str] | None:
+def nearest_example(text: str, specs, cutoff: float = 0.6) -> tuple[str, str] | None:
     examples = {ex.lower(): s.full_name for s in specs for ex in s.examples}
     close = difflib.get_close_matches(normalise(text), list(examples), n=1, cutoff=cutoff)
     return (close[0], examples[close[0]]) if close else None
