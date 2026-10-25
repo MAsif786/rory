@@ -11,7 +11,9 @@ tool = Tool("clock", category="everyday", title="Clock", emoji="🕐", descripti
 PLACE = r"[^\d]{2,40}"
 NOT_PLACES = ["bed time", "story time", "game time", "prime time", "free time", "real time", "part time", "full time", "long time",
               "any time", "same time", "next time", "last time", "first time", "this time", "that time", "good time", "big time",
-              "quality time", "spare time", "time to", "time for", "time of", "time zone"]
+              "quality time", "spare time", "time to", "time for", "time of", "time zone", "one more time", "once more time", "another time", "every time",
+              "each time", "all the time", "about time", "on time", "in time", "high time", "lunch time", "dinner time", "play time", "show time",
+              "one time", "two time", "three time", "some time", "no time", "more time", "less time", "extra time", "half time", "full time"]
 
 
 @tool.feature(

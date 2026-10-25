@@ -106,6 +106,7 @@ def test_an_open_question_belongs_to_the_person_it_was_asked(rig):
 
 def test_a_group_game_is_shared_by_everyone(rig):
     rig.say(ALICE, "rory play guess")
+    main.bot.store.get(GROUP).session.state.secret = 7                          # the secret is random: fix it so Bob's guess can never win by luck
     assert len(rig.say(BOB, "50")) == 1                                         # a guess from anyone, no mention (unchanged behaviour)
     assert main.bot.store.get(GROUP).session.tool == "guess"
 

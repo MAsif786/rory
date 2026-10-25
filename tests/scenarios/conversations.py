@@ -25,6 +25,30 @@ FOLLOWUPS = [
                                                              T("what about karachi", fail=None, has="lost track", no_http=True)]),
 ]
 
+AGAIN = [
+    Scenario("again: a coin flipped over and over, in every wording", [
+        T("flip a coin", any_of=["Heads", "Tails"]), T("flip", any_of=["Heads", "Tails"], lacks="know"), T("toss again", any_of=["Heads", "Tails"]),
+        T("again", any_of=["Heads", "Tails"]), T("one more", any_of=["Heads", "Tails"]), T("another one", any_of=["Heads", "Tails"]),
+        T("flip it", any_of=["Heads", "Tails"]), T("more", any_of=["Heads", "Tails"], lacks="Same as")]),
+    Scenario("again: dice keep their notation", [T("roll 3d6", has="3 dice"), T("again", has="3 dice"), T("roll again", has="You rolled a"), T("roll", has="You rolled a"),
+                                                  T("roll d20", has="(20-sided)"), T("one more", has="(20-sided)")]),
+    Scenario("again: a pick is made from the same options", [T("choose between tea or coffee", has="I pick"), T("again", any_of=["tea", "coffee"], has="I pick"),
+                                                             T("another", any_of=["tea", "coffee"], has="I pick")]),
+    Scenario("again: a fresh joke / fact every time, never 'same as a moment ago'", [
+        T("tell me a joke", http="random_joke"), T("another one", http="random_joke", lacks="Same as"), T("again", http="random_joke"),
+        T("tell me a fact", http="uselessfacts"), T("one more", http="uselessfacts", lacks="Same as"), T("did you know something about the moon", http="moon"),
+        T("again", http="moon")]),
+    Scenario("again: live data is asked afresh", [T("weather in lahore", http="Lahore"), T("again", http="Lahore", lacks="Same as"),
+                                                  T("100 usd to pkr", http="frankfurter"), T("again", http="frankfurter", lacks="Same as"), T("today's news", has="Top headlines"),
+                                                  T("again", has="Top headlines", http="news.google.com")]),
+    Scenario("again: with nothing to repeat it says so", [T("again", has="Again what?"), T("one more time", has="Again what?"), T("repeat", has="Again what?"),
+                                                           T("flip a coin"), T("again", any_of=["Heads", "Tails"]),
+                                                           T("again", wait=TURN_TTL + 1, has="Again what?")]),
+    Scenario("again: follows the LAST answer, not an older one", [T("tell me a joke"), T("flip a coin", any_of=["Heads", "Tails"]), T("again", any_of=["Heads", "Tails"], lacks="👉"),
+                                                                   T("roll 2d6"), T("again", has="2 dice")]),
+    Scenario("again: a game is not interrupted by it", [T("play guess", session="guess"), T("again", session="guess")]),
+]
+
 CLARIFY = [
     Scenario("weather: asks for the place, then uses the answer", [T("weather", has="Which place?"), T("multan", http="multan", has="Lahore")]),
     Scenario("calculator: asks for the expression", [T("calculate", has="What should I calculate"), T("2*8", has="*16*")]),
@@ -98,4 +122,4 @@ REAL_CHATS = [
     Scenario("moods get fitting answers", [T("i'm tired", has="rest"), T("im bored", has="Games"), T("i'm hungry", has="pizza"), T("i feel sad", has="Sorry")]),
 ]
 
-ALL = [*FOLLOWUPS, *CLARIFY, *REPEATS, *GREETINGS, *HELP, *UNKNOWN, *OUTAGES, *REAL_CHATS]
+ALL = [*FOLLOWUPS, *AGAIN, *CLARIFY, *REPEATS, *GREETINGS, *HELP, *UNKNOWN, *OUTAGES, *REAL_CHATS]

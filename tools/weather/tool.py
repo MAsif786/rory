@@ -1,7 +1,7 @@
 """Weather: two features, `current` (now + 3 days) and `forecast` (5 days with rain chance). Open-Meteo, no API key."""
 from datetime import datetime
 
-from app.core.schemas import Followup, Input, UserError
+from app.core.schemas import AGAIN, Followup, Input, UserError
 from app.core.tool import Tool
 from app.nlu.entities import DATE_WORDS, canonical, days_ahead, describe
 
@@ -22,7 +22,8 @@ WMO = {
 # `when` is filled by the entity pre-pass ("weather next monday in karachi") or by a follow-up ("and tomorrow")
 INPUTS = {"place": Input(required=True), "when": Input(pattern=DATE_WORDS)}
 FOLLOWUPS = [Followup(phrases=["and {when}", "what about {when}", "how about {when}", "{when}"], overrides=["when"]),
-             Followup(phrases=["what about {place}", "how about {place}", "and {place}"], overrides=["place"])]
+             Followup(phrases=["what about {place}", "how about {place}", "and {place}"], overrides=["place"]),
+             AGAIN]                                                                       # "again": ask the same thing afresh (live data)
 MAX_DAYS_AHEAD = 15
 
 

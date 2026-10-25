@@ -2,7 +2,7 @@
 import random
 import re
 
-from app.core.schemas import Input, UserError
+from app.core.schemas import AGAIN, Followup, Input, UserError
 from app.core.tool import Tool
 
 tool = Tool("dice", category="entertainment", title="Coin & dice", emoji="🎲", description="Coin, dice & picks", synonyms={"select": "choose"})
@@ -11,16 +11,19 @@ tool = Tool("dice", category="entertainment", title="Coin & dice", emoji="🎲",
 @tool.feature(
     "flip", description="Flip a coin",
     phrases=["flip a coin", "flip coin", "toss a coin", "toss coin", "coin flip", "coin toss", "heads or tails", "flip the coin",
-             "toss the coin", "coin"],
-    examples=["flip a coin", "heads or tails"])
+             "toss the coin", "coin", "flip", "toss", "flip it", "toss it", "flip again", "toss again", "flip one", "flip another"],
+    examples=["flip a coin", "heads or tails"],
+    followups=[AGAIN])
 async def flip(ctx):
     return random.choice(["🪙 *Heads!*", "🪙 *Tails!*"])
 
 
 @tool.feature(
     "roll", description="Roll dice (2d6 = two dice)",
-    phrases=["roll {dice}", "roll a dice", "roll a die", "roll the dice", "roll dice", "throw a dice", "throw the dice", "throw dice", "throw a die", "dice", "die"],
+    phrases=["roll {dice}", "roll a dice", "roll a die", "roll the dice", "roll dice", "throw a dice", "throw the dice", "throw dice", "throw a die", "dice", "die",
+             "roll", "roll again", "roll it", "roll it again", "throw", "throw again"],
     examples=["roll a dice", "roll 2d6"],
+    followups=[AGAIN],
     negatives=["roll call", "roll back", "roll out", "rock and roll"],
     inputs={"dice": Input(pattern=r"\d{0,2}d\d{1,3}")})
 async def roll(ctx, dice):
@@ -44,6 +47,7 @@ async def roll(ctx, dice):
              "decide {options}", "decide between {options}"],
     keywords=["choose", "decide"],
     examples=["choose between pizza or sushi", "pick pizza, sushi, tacos"],
+    followups=[AGAIN],
     inputs={"options": Input(required=True, pattern=r".+(?:,|\bor\b|/).+",
                              ask="🤔 Which options should I pick from? (e.g. *pizza, sushi or tacos*)")})
 async def choose(ctx, options):

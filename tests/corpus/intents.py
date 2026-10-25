@@ -54,7 +54,8 @@ WRAPPED = [
     ("show me the latest news", "news.headlines"), ("please tell me about volcanoes", "wiki.lookup"),
 ]
 
-PROMOTED = [   # reviewed synonym additions (see scripts/suggest_synonyms.py)
+PROMOTED = [   # bare / repeat forms of random tools
+    ("flip", "dice.flip"), ("toss", "dice.flip"), ("flip again", "dice.flip"), ("toss it", "dice.flip"), ("roll", "dice.roll"), ("roll again", "dice.roll"),   # reviewed synonym additions (see scripts/suggest_synonyms.py)
     ("thnx", "greetings.thanks"), ("thanx bro", "greetings.thanks"), ("select pizza or sushi", "dice.choose"), ("15 pct of 200", "calc.percent"),
     ("math 2+2", "calc.calc"), ("top headline", "news.headlines"), ("arrivederci", "greetings.bye"), ("what's the climate tomorrow in oslo", "weather.current"),   # promoted after the entity pre-pass (dates, spoken maths) and tool synonyms
     ("will i need an umbrella next monday in karachi", "weather.forecast"), ("square root of 144", "calc.calc"), ("what's 15 times 4", "calc.calc"),
@@ -85,7 +86,7 @@ NEGATIVE = [
     "yes/no", "and/or", "can you help me with my homework", "see you tomorrow", "what do you think", "i'll roll up my sleeves", "lets play", "play",
     "the weather was terrible last week", "i have a coin collection", "my dice are broken", "the book was great", "i watched a movie yesterday",
     "that joke was bad", "thanks but no thanks to that idea", "random thoughts", "just testing", "what", "why", "ok then", "hmm interesting",
-    "i'm going to the market", "im sorry", "i am a student", "i feel like pizza", "doing laundry", "who", "tell me", "convert", "play", "quran is a book", "the news was boring", "bye bye bye bye bye",
+    "i'm going to the market", "im sorry", "i am a student", "i feel like pizza", "doing laundry", "one more time", "again", "another one", "more", "next", "who", "tell me", "convert", "play", "quran is a book", "the news was boring", "bye bye bye bye bye",
 ]
 
 # --- messages that should ask a clarifying question (feature identified, an input missing) -------------------------------------

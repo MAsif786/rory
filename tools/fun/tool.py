@@ -2,7 +2,7 @@
 import random
 import re
 
-from app.core.schemas import Input, UserError
+from app.core.schemas import AGAIN, Input, UserError
 from app.core.tool import Tool
 from app.wikipedia import cut, page_url, summary
 
@@ -14,7 +14,7 @@ tool = Tool("fun", category="entertainment", title="Jokes & facts", emoji="😂"
     phrases=["joke", "a joke", "tell me a joke", "tell me another joke", "another joke", "one more joke", "give me a joke",
              "make me laugh", "say something funny", "tell me something funny", "got any jokes"],
     keywords=["joke", "jokes"], examples=["tell me a joke", "make me laugh"],
-    negatives=["no joke", "not a joke", "joking", "joke's on"])
+    negatives=["no joke", "not a joke", "joking", "joke's on"], followups=[AGAIN])
 async def joke(ctx):
     r = await ctx.services.http.get("https://official-joke-api.appspot.com/random_joke")
     r.raise_for_status()
@@ -26,7 +26,7 @@ async def joke(ctx):
     "fact", description="A random fun fact",
     phrases=["fact", "a fact", "fun fact", "random fact", "tell me a fact", "tell me a fun fact", "tell me a random fact",
              "give me a fact", "another fact", "one more fact", "did you know", "something interesting", "tell me something interesting"],
-    examples=["tell me a fact", "fun fact"])
+    examples=["tell me a fact", "fun fact"], followups=[AGAIN])
 async def fact(ctx):
     r = await ctx.services.http.get("https://uselessfacts.jsph.pl/api/v2/facts/random", params={"language": "en"})
     r.raise_for_status()
@@ -39,7 +39,7 @@ async def fact(ctx):
              "did you know something about {topic}", "did you know about {topic}", "did you know anything about {topic}",
              "tell me something interesting about {topic}", "something interesting about {topic}", "interesting facts about {topic}",
              "interesting fact about {topic}", "give me a fact about {topic}"],
-    examples=["did you know something about the moon", "fun fact about octopuses"],
+    examples=["did you know something about the moon", "fun fact about octopuses"], followups=[AGAIN],
     inputs={"topic": Input(required=True, pattern=r"(?!(?:i|me|my|you|your|we|us|our)\b)[^\n]{2,60}", ask="🤓 A fact about what?")})
 async def fact_about(ctx, topic):
     page = await summary(ctx.services.http, topic, missing=f"🤓 I couldn't find a fact about *{topic}*. Try another topic.")

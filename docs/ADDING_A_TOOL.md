@@ -30,6 +30,16 @@ async def current(ctx, place, day):
     return f"Weather in {place} ({day}): ..."
 ```
 
+## "Again" / "one more" for random or live answers
+Coin flips, dice, picks, jokes, facts and live data (weather, news, currency) should answer "again", "one more", "another one", "more" by repeating the request
+with the same arguments (a roll of 3d6 stays 3d6, a pick keeps its options). Add the ready-made follow-up:
+```python
+from app.core.schemas import AGAIN
+@tool.feature("flip", phrases=["flip a coin", "flip", "toss again"], examples=["flip a coin"], followups=[AGAIN])
+```
+Bare forms people type for the tool itself ("flip", "roll") belong in `phrases`; "again" with nothing to repeat (the context expired) gets "Again what?" from the router.
+The auto-derived follow-up tests check that `AGAIN` keeps every argument, so a new tool using it is covered the day it is added.
+
 ## Synonyms: let WordNet suggest, you review
 People say "gag" for "joke" and "tidings" for "news". Declare such words on the tool, and the engine (as a fallback, and only when the rewritten
 message matches one of your declared phrases) reads them as your word:

@@ -7,7 +7,7 @@ import xml.etree.ElementTree as ET
 from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
 
-from app.core.schemas import Followup, Input, UserError
+from app.core.schemas import AGAIN, Followup, Input, UserError
 from app.core.tool import Tool
 from app.format import num, tip
 
@@ -144,7 +144,7 @@ OPEN_STORY = Followup(phrases=["{pick}", "open {pick}", "link {pick}", "link for
              "khabrein", "khabar", "aaj ki khabrein", "taza khabrein", "mujhe khabrein batao", "khabrein batao"],
     examples=["today's news", "top headlines"],
     negatives=NOT_NEWS,
-    inputs={"pick": PICK}, followups=[OPEN_STORY])
+    inputs={"pick": PICK}, followups=[OPEN_STORY, Followup(phrases=AGAIN.phrases, sets={"pick": None})])
 async def headlines(ctx, pick):
     return await _show(ctx, None, pick)
 
@@ -159,6 +159,6 @@ async def headlines(ctx, pick):
     negatives=NOT_NEWS,
     inputs={"topic": Input(required=True, pattern=TOPIC, ask="📰 News about what? (e.g. *news about cricket*)"), "pick": PICK},
     followups=[Followup(phrases=["what about {topic}", "how about {topic}", "and {topic}"], overrides=["topic"], sets={"pick": None}),
-               OPEN_STORY])
+               OPEN_STORY, Followup(phrases=AGAIN.phrases, sets={"pick": None})])
 async def about(ctx, topic, pick):
     return await _show(ctx, topic, pick)

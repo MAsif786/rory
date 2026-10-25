@@ -25,6 +25,12 @@ class Followup(Schema):
     sets: dict[str, Any] = {}          # args forced to a fixed value
 
 
+# A ready-made follow-up for answers that are random or can be repeated: "again" / "one more" re-run the last request with the same arguments.
+# Use it on coin flips, dice, picks, jokes, facts:  @tool.feature(..., followups=[AGAIN])
+AGAIN = Followup(phrases=["again", "once more", "one more", "one more time", "another", "another one", "more", "next", "do it again", "go again",
+                          "again please", "repeat", "repeat that", "one more please"])
+
+
 # --- what a game handler returns -------------------------------------------------------------
 @dataclass
 class SessionStart:

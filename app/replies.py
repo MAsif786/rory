@@ -8,6 +8,7 @@ import re
 from dataclasses import dataclass
 
 from app.core.registry import Registry
+from app.core.schemas import AGAIN
 from app.nlu.entities import extract_dates
 from app.core.schemas import FeatureSpec
 from app.core.tool import Tool
@@ -128,6 +129,7 @@ ACK_REPLIES = ["😊 Glad to hear it! Ask me anything else — send *help* for i
                "🙂 I'm here whenever you need something. Send *help* to see what I can do."]
 
 
+AGAIN_WORDS = {p for p in AGAIN.phrases} | {"again please", "do it again", "repeat it"}
 QUESTION_WORDS = {"what", "whats", "who", "whom", "why", "when", "where", "how", "which", "is", "are", "was", "were", "do", "does", "did",
                   "can", "could", "will", "would", "should", "tell", "show", "give", "and", "or", "but", "so"}
 
@@ -199,6 +201,8 @@ def classify_unmatched(registry: Registry, times: int = 1, text: str = "") -> Un
         return Unmatched("🤔 Still not sure what you mean. Try rephrasing, or send *help* to see what I can do.")
     if clean in ACKS:
         return Unmatched(random.choice(ACK_REPLIES))
+    if clean in AGAIN_WORDS:                                          # "again" / "one more" with nothing to repeat (the context expired, or the last answer can't repeat)
+        return Unmatched("🔁 Again what? I've lost track of what we were doing.\n\n" + tip("Ask in full, e.g. _flip a coin_ or _tell me a joke_"))
     if close := _suggestion(registry, text):
         return Unmatched(f"🤔 I didn't get that. Did you mean _{close}_?")
     if ABOUT_BOT.match(clean):

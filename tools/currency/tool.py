@@ -1,5 +1,5 @@
 """Currency conversion with daily ECB rates (Frankfurter, no key)."""
-from app.core.schemas import Followup, Input, UserError
+from app.core.schemas import AGAIN, Followup, Input, UserError
 from app.core.tool import Tool
 
 tool = Tool("currency", category="everyday", title="Currency", emoji="💱", description="Currency conversion", synonyms={"exchange": "convert"})
@@ -33,7 +33,7 @@ def _code(word: str) -> str:
     negatives=["whether"],
     inputs=INPUTS,
     followups=[Followup(phrases=["and in {quote}", "what about {quote}", "in {quote}"], overrides=["quote"]),
-               Followup(phrases=["what about {amount}", "and {amount}"], overrides=["amount"])])
+               Followup(phrases=["what about {amount}", "and {amount}"], overrides=["amount"]), AGAIN])
 async def convert(ctx, amount, base, quote):
     base, quotes = _code(base), [_code(q) for q in quote.split(",")]
     amount = float(str(amount).replace(",", ""))

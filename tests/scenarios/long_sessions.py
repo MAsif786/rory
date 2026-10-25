@@ -5,6 +5,7 @@ What these catch that short scenarios cannot: state leaking between topics, a fo
 survives (or dies) at the wrong moment, and behaviour that only appears after many turns."""
 from app.core.context import REPEAT_TTL, SESSION_TTL, TURN_TTL
 from tests.scenarios.dsl import Scenario, T
+from tests.scenarios.games import secret
 
 MORNING = Scenario("session: a morning routine (greeting, weather chain, news, thanks, synonyms, goodbye)", [
     T("assalamualaikum", has="Wa alaikum assalam"),
@@ -84,7 +85,7 @@ GAME_WITH_INTERRUPTIONS = Scenario("session: a game interrupted by menus, help a
     T("weather in lahore", wait=REPEAT_TTL + 1, has="Lahore, Pakistan", http="Lahore"),   # a minute later: normal service, fetched afresh
     T("and tomorrow", has="(tomorrow)", http="Lahore"),
     T("play guess", session="guess"),
-    T("50", session="guess", any_of=["higher", "lower", "Go"]),
+    T("50", pre=secret(77), session="guess", any_of=["higher", "lower", "Go"]),
     T("stop", has="Game ended", session=None),
     T("and tomorrow", has="(tomorrow)"),                                             # follow-up context survived the games in between
 ])
