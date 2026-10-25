@@ -18,6 +18,7 @@ from app.core.context import ContextStore
 from app.core.dispatcher import Dispatcher
 from app.core.registry import Registry
 from app.core.services import Services
+from app import auth
 from app.groups import address
 from app.inbox import Recorder
 from app.guards import KeyedLocks, RateLimiter, Seen
@@ -50,6 +51,9 @@ async def lifespan(_: FastAPI):
     """Start the worker pool. The webhook only parses and enqueues, so WAHA gets its answer immediately however busy the bot is."""
     global queue
     queue = asyncio.Queue(maxsize=settings.queue_size)
+    if not auth.configured(settings.webhook_hmac_key, settings.webhook_token):
+        log.warning("webhook is NOT authenticated: anyone who can reach it can make the bot reply. Set WEBHOOK_HMAC_KEY (and the same value as "
+                    "WHATSAPP_HOOK_HMAC_KEY for WAHA) to verify WAHA's signature.")
     _workers[:] = [asyncio.create_task(_worker()) for _ in range(settings.workers)]
     try:
         yield
@@ -179,11 +183,26 @@ async def read_body(request: Request, limit: int) -> bytes | None:
     return b"".join(chunks)
 
 
+_auth_warned: dict[str, float] = {}
+
+
+def _reject(reason: str) -> JSONResponse:
+    """401 without saying which check failed; the reason goes to the log, at most one line per reason every 10 s (a flood must not flood the log)."""
+    now = time.monotonic()
+    if now - _auth_warned.get(reason, -99) > 10:
+        _auth_warned[reason] = now
+        log.warning("webhook rejected: %s", reason)
+    return JSONResponse({"ok": False, "error": "unauthorized"}, status_code=401)
+
+
 @app.post("/webhook")
 async def webhook(request: Request, background: BackgroundTasks):
     body = await read_body(request, settings.max_body_bytes)
     if body is None:
         return JSONResponse({"ok": False, "error": "request too large"}, status_code=413)
+    if auth.configured(settings.webhook_hmac_key, settings.webhook_token):
+        if reason := auth.verify(body, request.headers, request.query_params, settings.webhook_hmac_key, settings.webhook_token):
+            return _reject(reason)
     try:
         event = json.loads(body)
     except ValueError:

@@ -25,6 +25,9 @@ class Settings(BaseModel):
     max_chats: int = Field(10_000, ge=10)                   # hard cap on remembered chats (least recently used go first)
     max_message_chars: int = Field(1000, ge=10)             # longer messages get a polite refusal instead of being processed
     max_body_bytes: int = Field(100_000, ge=1000)           # webhook request bodies above this are rejected (413) without being parsed
+    webhook_hmac_key: str = ""                              # verify WAHA's X-Webhook-Hmac signature (same value as WAHA's WHATSAPP_HOOK_HMAC_KEY); "" = open
+    webhook_token: str = ""                                 # optional shared token in an X-Webhook-Token header or ?token= (WHATSAPP_HOOK_CUSTOM_HEADERS)
+    waha_client: Literal["fast", "httpx"] = "fast"          # how replies are sent: a small keep-alive client (http:// only, 17x cheaper) or httpx
     workers: int = Field(32, ge=1, le=1000)                 # messages processed at the same time (one per chat; chats run in parallel)
     queue_size: int = Field(10_000, ge=1)                   # messages waiting for a worker; when full the webhook answers 503 and WAHA retries
     unmatched_path: str = "data/unmatched.jsonl"            # the improvement inbox: messages Rory could not handle ("" turns it off)
@@ -38,6 +41,11 @@ class Settings(BaseModel):
         if not v.startswith(("http://", "https://")):
             raise ValueError("must start with http:// or https://")
         return v.rstrip("/")
+
+    @field_validator("waha_client", mode="before")
+    @classmethod
+    def _client(cls, v):
+        return v.lower() if isinstance(v, str) else v
 
     @field_validator("bot_name")
     @classmethod
@@ -61,6 +69,8 @@ class Settings(BaseModel):
     def from_env(cls, env=None) -> "Settings":
         env = os.environ if env is None else env
         raw = {name: env[name.upper()] for name in cls.model_fields if name.upper() in env and env[name.upper()] != ""}
+        if "webhook_hmac_key" not in raw and env.get("WHATSAPP_HOOK_HMAC_KEY"):            # one variable in .env configures both sides
+            raw["webhook_hmac_key"] = env["WHATSAPP_HOOK_HMAC_KEY"]
         try:
             return cls(**raw)
         except ValidationError as e:
