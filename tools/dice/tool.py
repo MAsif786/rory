@@ -18,7 +18,7 @@ async def flip(ctx):
 
 
 @tool.feature(
-    "roll", description="Roll dice (default one 6-sided die; try 2d6 or d20)",
+    "roll", description="Roll dice: 'roll a dice', 'roll 2d6' (two dice), 'roll d20' (one 20-sided die)",
     phrases=["roll {dice}", "roll a dice", "roll a die", "roll the dice", "roll dice", "throw a dice", "throw the dice", "throw dice", "throw a die", "dice", "die"],
     examples=["roll a dice", "roll 2d6"],
     negatives=["roll call", "roll back", "roll out", "rock and roll"],
@@ -31,8 +31,11 @@ async def roll(ctx, dice):
     if not 1 <= n <= 20 or not 2 <= sides <= 1000:
         raise UserError("🎲 Between 1 and 20 dice, with 2 to 1000 sides each.")
     rolls = [random.randint(1, sides) for _ in range(n)]
-    detail = f"{n}d{sides}: {' + '.join(map(str, rolls))}" if n > 1 else f"{n}d{sides}"        # 2d6 = two six-sided dice
-    return f"🎲 You rolled *{sum(rolls)}*  _({detail})_"
+    kind = "" if sides == 6 else f" ({sides}-sided)"
+    if n == 1:
+        return f"🎲 You rolled a *{rolls[0]}*{kind}"
+    shown = " and ".join(f"*{r}*" for r in rolls) if n == 2 else ", ".join(f"*{r}*" for r in rolls)
+    return f"🎲 You rolled {n} dice{kind}: {shown}\n➕ Total: *{sum(rolls)}*"
 
 
 @tool.feature(

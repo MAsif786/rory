@@ -1,5 +1,6 @@
 """Behaviour of the ported tools, end to end through the bot, with a fake HTTP client (no network)."""
 import random
+import re
 from types import SimpleNamespace
 
 import httpx
@@ -66,7 +67,7 @@ async def test_units(bot, text, expected):
 async def test_dice_flip_roll_choose(bot):
     random.seed(1)
     assert await say(bot, "flip a coin") in ("🪙 *Heads!*", "🪙 *Tails!*")
-    assert "2d6" in await say(bot, "roll 2d6") and "1d6" in await say(bot, "roll a dice")
+    assert "2 dice" in await say(bot, "roll 2d6") and "You rolled a *" in await say(bot, "roll a dice")
     assert "between 1 and 20" in (await say(bot, "roll 99d6")).lower()
     assert "I pick: *" in await say(bot, "choose between pizza, sushi or tacos")
 
@@ -244,7 +245,10 @@ async def test_web_search_needs_a_key_then_returns_results(monkeypatch):
 async def test_dice_reply_explains_itself(bot):
     random.seed(7)
     out = await say(bot, "Roll 2d6")
-    assert out.startswith("🎲 You rolled *") and "_(2d6: " in out and " + " in out
-    total = int(out.split("*")[1])
-    assert total == sum(int(x) for x in out.split(": ")[1].rstrip(")_").split(" + "))          # the parts add up to the total
-    assert "_(1d6)_" in await say(bot, "roll a dice")
+    assert out.startswith("🎲 You rolled 2 dice: ") and "\n➕ Total: *" in out and "2d6" not in out and "(" not in out       # no jargon
+    parts = [int(x) for x in re.findall(r"\*(\d+)\*", out)]
+    assert parts[-1] == sum(parts[:-1]) and len(parts) == 3                                           # two dice and a matching total
+    assert (await say(bot, "roll a dice")).startswith("🎲 You rolled a *")
+    assert "(20-sided)" in await say(bot, "roll d20")
+    three = await say(bot, "roll 3d6")
+    assert "3 dice: *" in three and three.count(", ") == 2
