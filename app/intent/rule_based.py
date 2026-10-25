@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from functools import lru_cache
 
 from app.core.schemas import FeatureSpec, Input
+from app.nlu.words import distance, is_word
 from app.intent.decision import Decision, LastTurn
 from app.nlu.entities import extract_dates, spoken_maths
 from app.nlu.lexicon import lexicon, mentions_synonym, rewrite
@@ -57,9 +58,21 @@ def _phrase_match(text: str, phrases, inputs: dict[str, Input] | None = None) ->
 
 
 # --- canonicalisation: politeness, elongation and typos are removed *before* matching, so tools never see them --------------------
-_LEAD = re.compile(r"^(?:(?:please|pls|plz|kindly|hey|hi|hello|yo|ok|okay|rory|can you|could you|would you|will you|can u|could u|"
-                   r"can i get|can i have|may i have|i want to|i wanna|i would like to|i'd like to|i need to|i'd love to|let's|lets)[ ,]+)+", re.I)
-_TRAIL = re.compile(r"(?:[ ,]+(?:please|pls|plz|thanks|thank you|right now|now|for me|buddy|bro|rory|man|mate|yaar))+$", re.I)
+_LEAD_WORDS = ["please", "pls", "plz", "kindly", "hey", "hi", "hello", "yo", "ok", "okay", "rory", "can you", "could you", "would you", "will you", "can u",
+               "could u", "can i get", "can i have", "may i have", "i want to", "i wanna", "i would like to", "i'd like to", "i need to", "i'd love to", "let's",
+               "lets", "bro", "yaar", "dude", "oye", "arre", "acha", "so", "um", "uh", "hmm", "well", "just", "zara", "mujhe", "ek", "bhai", "sir", "hey rory",
+               "hi rory", "hello rory"]
+_TRAIL_WORDS = ["please", "pls", "plz", "thanks", "thank you", "right now", "now", "for me", "buddy", "bro", "rory", "man", "mate", "yaar",
+                "asap", "ji", "dude", "sir", "bhai", "ok", "okay", "batao", "bataiye", "bata do", "dikhao", "yar"]
+_LEAD = re.compile(r"^(?:(?:" + "|".join(re.escape(w) for w in sorted(_LEAD_WORDS, key=len, reverse=True)) + r")[ ,]+)+", re.I)
+_TRAIL = re.compile(r"(?:[ ,]+(?:" + "|".join(re.escape(w) for w in sorted(_TRAIL_WORDS, key=len, reverse=True)) + r"))+$", re.I)
+_EMOJI = re.compile("[\U0001F000-\U0001FAFF\U00002600-\U000027BF\U0001F1E6-\U0001F1FF\u2B00-\u2BFF\u2300-\u23FF\u200d\ufe0f\u2190-\u21FF\u2022]+")
+
+
+def strip_emoji(text: str) -> str:
+    """Emoji and pictographs are decoration for matching ("what time is it 😅"); a message that is ONLY emoji is left as it is."""
+    cleaned = " ".join(_EMOJI.sub(" ", text).split())
+    return cleaned or text
 KEYWORD_MAX_WORDS = 3          # a keyword alone is only a request in a short message ("weather", "joke please"), not in a sentence
 
 
@@ -72,7 +85,7 @@ _VOCAB: dict[tuple, frozenset] = {}
 
 
 def _vocab(specs: list[FeatureSpec]) -> frozenset:
-    """Every word the installed tools know (phrases, keywords, examples). Cached per set of installed features."""
+    """Every word the installed tools use in phrases, keywords and examples. Synonyms never rewrite these. Cached per set of installed features."""
     key = tuple(s.full_name for s in specs)
     vocab = _VOCAB.get(key)
     if vocab is None:                                    # the engine runs in worker threads: build locally, publish once, never clear-then-read
@@ -87,41 +100,137 @@ def _vocab(specs: list[FeatureSpec]) -> frozenset:
     return vocab
 
 
+_SLANG = frozenset({"thx", "thanx", "plz", "pls", "asap", "yar", "u", "ji"})
+_REPAIR_VOCAB: dict[tuple, frozenset] = {}
+
+
+def _repair_vocab(specs: list[FeatureSpec]) -> frozenset:
+    """The words a typo may be repaired TO: everything in `_vocab`, plus the words of negatives (so "movie nigth" is caught), synonym words and the
+    politeness words we strip (so "coulld" and "pllease" can be repaired before they are stripped)."""
+    key = tuple(s.full_name for s in specs)
+    vocab = _REPAIR_VOCAB.get(key)
+    if vocab is None:
+        words = set(_vocab(specs))
+        for s in specs:
+            for src in (*s.negatives, *(w for pair in s.synonyms for w in pair)):
+                words.update(w for w in re.findall(r"[a-z']+", src.lower()) if len(w) >= 2)
+        for src in (*_LEAD_WORDS, *_TRAIL_WORDS):
+            words.update(re.findall(r"[a-z']+", src))
+        words -= _SLANG                                            # "thanx" is stripped when it trails, but "many thanx" must be repaired to "many thanks"
+        vocab = frozenset(words)
+        if len(_REPAIR_VOCAB) > 8:
+            _REPAIR_VOCAB.clear()
+        _REPAIR_VOCAB[key] = vocab
+    return vocab
+
+
 def _deelongate(text: str, vocab: frozenset) -> str:
-    """hii -> hi, heyyy -> hey, thankss -> thanks (only for words we don't know, and only if the result is a known word)."""
-    out = []
-    for w in text.split():
-        if w.lower() not in vocab and re.search(r"(.)\1", w):
-            for squeeze in (re.sub(r"(.)\1{2,}", r"\1\1", w), re.sub(r"(.)\1+", r"\1", w)):
-                if squeeze.lower() in vocab:
-                    w = squeeze
-                    break
-        out.append(w)
-    return " ".join(out)
+    """hii -> hi, heyyy -> hey, rupeess -> rupees, teell -> tell: an unknown word with a run of repeated letters, shortened until it is a word we know."""
+    def fix(m: re.Match) -> str:
+        w = m.group(0)
+        if w.lower() in vocab or not re.search(r"(.)\1", w):
+            return w
+        runs = list(re.finditer(r"(.)\1+", w))
+        candidates = [w[: r.start()] + w[r.start()] * (len(r.group(0)) - 1) + w[r.end():] for r in runs]          # shorten ONE run by one letter
+        candidates += [re.sub(r"(.)\1{2,}", r"\1\1", w), re.sub(r"(.)\1+", r"\1", w)]                         # squeeze every run to two / one
+        return next((c for c in candidates if c.lower() in vocab), w)
+    return re.sub(r"[A-Za-z']{3,}", fix, text)
 
 
-def _repair_typos(text: str, vocab: frozenset) -> str:
-    """wether -> weather, forcast -> forecast (unknown words of 5+ letters that are very close to a known word)."""
-    out = []
-    for w in text.split():
-        lw = w.lower()
-        if len(lw) >= 5 and lw.isalpha() and lw not in vocab:
-            if close := difflib.get_close_matches(lw, [v for v in vocab if abs(len(v) - len(lw)) <= 2], n=1, cutoff=0.9):
-                w = close[0]
-        out.append(w)
-    return " ".join(out)
+_BUCKETS: dict[int, dict[int, list[str]]] = {}
+
+
+def _by_length(vocab: frozenset) -> dict[int, list[str]]:
+    buckets = _BUCKETS.get(id(vocab))
+    if buckets is None:
+        buckets = {}
+        for v in vocab:
+            buckets.setdefault(len(v), []).append(v)
+        if len(_BUCKETS) > 16:
+            _BUCKETS.clear()
+        _BUCKETS[id(vocab)] = buckets
+    return buckets
+
+
+_NEAREST: dict[tuple, str | None] = {}
+
+
+def _nearest(word: str, vocab: frozenset, cap: int | None = None, prefer: frozenset = frozenset()) -> str | None:
+    """The single closest word Rory knows, or None. Distance 1 for words of 4-6 letters, 2 from 7 letters (`cap` lowers that); a swap of two
+    letters counts as one. A tie is settled in favour of a word the tools use in their phrases (`prefer`: "wether" -> "weather", not "whether");
+    a tie that stays a tie is refused (guessing between two words is how a typo turns into the wrong command)."""
+    word = word[:30]                                                  # nothing real is longer; keeps adversarial input cheap
+    key = (word, id(vocab), cap, id(prefer))
+    if key in _NEAREST:
+        return _NEAREST[key]
+    limit = min(1 if len(word) <= 6 else 2, cap or 9)
+    buckets = _by_length(vocab)
+    best: list[str] = []
+    best_key = None
+    for n in range(len(word) - limit, len(word) + limit + 1):
+        for v in buckets.get(n, ()):
+            if len(v) < 3:
+                continue
+            d = distance(word, v, limit)
+            if d > limit:
+                continue
+            k = (d, v[0] != word[0])                                  # fewer edits first; a typo usually keeps the first letter
+            if best_key is None or k < best_key:
+                best, best_key = [v], k
+            elif k == best_key:
+                best.append(v)
+    if len(best) > 1:
+        best = [v for v in best if v in prefer]
+    result = best[0] if len(best) == 1 else None
+    if len(_NEAREST) > 20_000:
+        _NEAREST.clear()
+    _NEAREST[key] = result
+    return result
+
+
+def _repair_typos(text: str, vocab: frozenset, replaced: dict | None = None, contextual: bool = False, prefer: frozenset = frozenset()) -> str:
+    """wether -> weather, paly -> play, hllo -> hello. Strict mode touches only words that are neither something Rory knows nor a real English
+    word, so "whether" and "play" are safe. Contextual mode (the last resort, used only if the message then matches a phrase) also tries real words
+    that are one edit from a known word: "ply quiz" -> "play quiz", "all god" -> "all good", "wether" (a real word: a ram) -> "weather".
+    `replaced` collects {repaired: typed} so the engine can put back what the user typed inside an argument (a city name is not a typo)."""
+    def fix(m: re.Match) -> str:
+        w, lw = m.group(0), m.group(0).lower()
+        if len(lw) < (3 if contextual else 4) or lw in vocab or (not contextual and is_word(lw)):
+            return w
+        fixed = _nearest(lw, vocab, 1 if contextual else None, prefer)
+        if fixed is None:
+            return w
+        if replaced is not None:
+            replaced[fixed] = w
+            if isinstance(replaced, Loose) and is_word(lw):
+                replaced.real.add(fixed)
+        return fixed
+    return re.sub(r"[A-Za-z]{3,}", fix, text)
 
 
 def variants(text: str, specs: list[FeatureSpec]) -> list[str]:
     """The message as typed, cleaned in increasingly aggressive ways; the first variant that matches anything wins."""
-    raw = " ".join(text.strip().rstrip(".!?؟ ").split())
-    vocab = _vocab(specs)
-    stripped = strip_wrappers(raw) or raw
+    return [v for v, _ in variants_with_repairs(text, specs)]
+
+
+def variants_with_repairs(text: str, specs: list[FeatureSpec]) -> list[tuple[str, dict]]:
+    """Like `variants`, each with {repaired word: what the user typed} so arguments can be restored after matching on repaired text."""
+    raw = " ".join(strip_emoji(text).strip().rstrip(".!?؟ ").split())
+    vocab, prefer = _repair_vocab(specs), _vocab(specs)
+    deelongated = _deelongate(raw, vocab)
+    strict, loose = {}, Loose()
+    candidates = [
+        (strip_wrappers(deelongated) or deelongated, {}),                                       # the cleanest reading first
+        (strip_wrappers(raw) or raw, {}),
+        (raw, {}),
+        (strip_wrappers(_repair_typos(deelongated, vocab, strict, prefer=prefer)), strict),                    # typos in non-words
+        (strip_wrappers(_repair_typos(deelongated, vocab, loose, contextual=True, prefer=prefer)), loose),     # last resort: slips that are real words
+    ]
     seen, out = set(), []
-    for v in (stripped, raw, _deelongate(stripped, vocab), _repair_typos(_deelongate(stripped, vocab), vocab)):
+    for v, r in candidates:
         if v and v not in seen:
             seen.add(v)
-            out.append(v)
+            out.append((v, r))
     return out
 
 
@@ -228,29 +337,58 @@ def _best_synonym(text: str, specs: list[FeatureSpec]) -> tuple | None:
     base = strip_wrappers(raw) or raw
     if not mentions_synonym(base, table, known):
         return None
-    for source in dict.fromkeys((base, _repair_typos(_deelongate(base, known), known))):
+    rv = _repair_vocab(specs)
+    for source in dict.fromkeys((base, _repair_typos(_deelongate(base, rv), rv))):
         new, changed = rewrite(source, table, known)
         if changed and (ranked := explain(new, specs, text)):
             return ranked[0], new, changed
     return None
 
 
+class Loose(dict):
+    """Repairs that include real words (the last resort). `real` holds the words a real-word slip was repaired TO: if one of those lands inside an
+    argument ("list of jokes" -> "last of jokes" -> country "list of jokes") it is a misfire."""
+    def __init__(self):
+        super().__init__()
+        self.real: set[str] = set()
+
+
+def _restore(d: Decision, repairs: dict) -> Decision | None:
+    """Matching happened on repaired text; put back what the user typed inside the arguments ("lahor" stays "lahor", it is not a typo of "lahore" the place)."""
+    if repairs and d.args:
+        for key, value in d.args.items():
+            if isinstance(value, str):
+                for fixed, typed in repairs.items():
+                    value = re.sub(rf"(?<!\w){re.escape(fixed)}(?!\w)", typed, value, flags=re.I)
+                if isinstance(repairs, Loose) and value != d.args[key] and any(re.search(rf"(?<!\w){re.escape(r)}(?!\w)", d.args[key], re.I) for r in repairs.real):
+                    return None
+                d.args[key] = value
+    return d
+
+
 def decide(text: str, specs: list[FeatureSpec], last: LastTurn | None = None) -> Decision:
+    text = strip_emoji(text)
     if pre := _pre_decide(text, specs):
         best, v, via, found = pre
         return _finish(best, specs, last, v, via, found)
     syn = _best_synonym(text, specs)
-    for v in variants(text, specs):
-        ranked = explain(v, specs, text)
+    vocab = _repair_vocab(specs)
+    # negatives ("movie night", "good news") must also catch their typos ("movie nigth"): they see the message as typed AND repaired
+    seen_as = f"{text} | {_repair_typos(_deelongate(text, vocab), vocab)} | {_repair_typos(_deelongate(text, vocab), vocab, contextual=True, prefer=_vocab(specs))}"
+    for n, (v, repairs) in enumerate(variants_with_repairs(text, specs)):
+        if n and repairs and (pre := _pre_decide(v, specs)):                  # a repaired date or sum ("weather tommorow") is still a date or a sum
+            if (r := _restore(_finish(pre[0], specs, last, pre[1], pre[2], pre[3]), repairs)):
+                return r
+        ranked = explain(v, specs, seen_as)
         best, via = (ranked[0] if ranked else None), ""
         if syn and (best is None or syn[0][0] > best[0]):         # a synonym reading only wins if it is clearly the stronger one
             best, v, via = syn[0], syn[1], "synonym"
         if best and best[0][0] == 1 and (fu := _followup(v, specs, last)):
             return fu                   # a bare keyword ("link") is weaker than a follow-up to the last answer ("link 2")
-        if best:
-            return _finish(best, specs, last, v, via)
-        if fu := _followup(v, specs, last):
-            return fu
+        if best and (r := _restore(_finish(best, specs, last, v, via), repairs)):
+            return r
+        if not best and (fu := _followup(v, specs, last)) and (r := _restore(fu, repairs)):
+            return r
     return Decision("none")
 
 
