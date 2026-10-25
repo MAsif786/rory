@@ -16,37 +16,100 @@ from app.format import tip  # noqa: F401  (re-exported: tools and pages share on
 MAX_EXAMPLES = 3
 
 
+_LINKISH = re.compile(r"https?://|www\.|\b[\w-]+\.(?:com|org|net|io|dev|ai|app|co|pk|edu|gov|info|me)\b", re.I)
+
+
+def shown(examples) -> list[str]:
+    """Examples fit to show a user. One that looks like a link (https://example.com) is hidden: chat apps turn it into a clickable preview."""
+    return [e for e in examples if not _LINKISH.search(e)]
+
+
+def _about(tool: Tool) -> str:
+    """The tool's one-line description, or "" when it only repeats the title ("Web search - Web search")."""
+    t, d = tool.title.lower(), tool.description.lower()
+    if not d or t in d or d in t or difflib.SequenceMatcher(None, t, d).ratio() >= 0.6:
+        return ""
+    return tool.description
+
+
 def _examples(tool: Tool) -> list[str]:
-    return [ex for f in tool.features.values() for ex in f.spec.examples][:MAX_EXAMPLES]
+    return shown(ex for f in tool.features.values() for ex in f.spec.examples)[:MAX_EXAMPLES]
 
 
 def _is_game(tool: Tool) -> bool:
     return all(f.spec.kind == "session" for f in tool.features.values())
 
 
+# How help is organised: a short home page lists these groups; `help <group>` opens one; `help <tool>` one tool; `help all` everything.
+# (key, emoji, title, one-line description, aliases people might type). A tool joins a group with `Tool(..., category="<key>")`;
+# a tool with no (or an unknown) category appears under "More" so it is never hidden.
+CATEGORIES = [
+    ("everyday", "🌤️", "Everyday", "weather, news, money, time and quick maths", ("tools", "daily", "utilities", "useful")),
+    ("knowledge", "📚", "Look things up", "Wikipedia, countries, books and movies", ("lookup", "learn", "facts", "info", "reference")),
+    ("islamic", "🕌", "Quran", "verses, search, recitation and tafsir", ("islam", "religion", "religious")),
+    ("web", "🌐", "Web & dev", "GitHub, IP lookup, link previews and web search", ("dev", "developer", "internet", "online")),
+    ("entertainment", "😄", "Just for fun", "jokes, facts, coin and dice", ("entertain", "funny", "jokes")),
+    ("games", "🎮", "Games", "play against the bot", ("play", "game")),
+    ("chat", "💬", "Chat", "say hi, thanks or goodbye", ("talk", "social", "greet")),
+]
+OTHER = ("other", "🧩", "More", "everything else", ())
+
+
+def grouped(registry: Registry) -> list[tuple[tuple, list[Tool]]]:
+    """[(category, tools)] in menu order, only non-empty groups; unknown categories land in More."""
+    keys = {c[0] for c in CATEGORIES}
+    by_key: dict[str, list[Tool]] = {}
+    order = {name: i for i, name in enumerate(SHOWCASE)}
+    for t in sorted((t for t in registry.tools.values() if not t.hidden), key=lambda t: (order.get(t.name, len(order)), t.name)):   # most useful first
+        key = "games" if _is_game(t) else t.category if t.category in keys else "other"
+        by_key.setdefault(key, []).append(t)
+    return [(c, by_key[c[0]]) for c in (*CATEGORIES, OTHER) if c[0] in by_key]
+
+
+def find_category(registry: Registry, word: str):
+    word = word.strip().lower()
+    for cat, tools in grouped(registry):
+        if word in (cat[0], cat[2].lower(), *cat[4]):
+            return cat, tools
+    return None
+
+
 def home_menu(registry: Registry) -> str:
-    if not registry.tools:
+    """A short page: one block per category (what is in it, and a few things to type), not one block per tool."""
+    if not any(not t.hidden for t in registry.tools.values()):
         return "🏠 *Home*\n\nNo tools are installed yet."
     lines = ["🏠 *Home* — what would you like to do?", ""]
-    games = [t for t in registry.tools.values() if _is_game(t)]
-    for t in registry.tools.values():
-        if _is_game(t):
+    groups = grouped(registry)
+    for (key, emoji, title, _blurb, _aliases), tools in groups:
+        if key == "games":
+            names = " · ".join(t.title for t in tools[:4]) + (f" · +{len(tools) - 4} more" if len(tools) > 4 else "")
+            lines += [f"{emoji} *{title}* — {names}", f"   _say *play {tools[0].name}* · or *games* for the list_"]
             continue
-        lines.append(f"{t.emoji} *{t.title}*" + (f" — {t.description}" if t.description else ""))
-        if ex := _examples(t):
+        names = " · ".join(t.title for t in tools) if len(tools) > 1 else (tools[0].description or tools[0].title)     # one tool: say what it does
+        lines.append(f"{emoji} *{title}* — {names}")
+        if ex := [e for t in tools for e in _examples(t)[:1]][:3]:
             lines.append("   _" + " · ".join(ex) + "_")
-    if games:
-        lines += ["", "🎮 *Games* — say *play* and a game name:", "   " + " · ".join(f"{g.emoji} {g.title}" for g in games)]
-    lines += ["", tip("*help weather* shows a tool's features · *help all* lists everything")]
     return "\n".join(lines)
 
 
+def category_page(registry: Registry, cat: tuple, tools: list[Tool]) -> str:
+    key, emoji, title, blurb, _ = cat
+    if key == "games":
+        return games_menu(registry)
+    lines = [f"{emoji} *{title}* — {blurb}", ""]
+    for t in tools:
+        lines.append(f"{t.emoji} *{t.title}* — {_about(t)}" if _about(t) else f"{t.emoji} *{t.title}*")
+        if ex := _examples(t):
+            lines.append("   _" + " · ".join(ex) + "_")
+    return "\n".join(lines).rstrip()
+
+
 def games_menu(registry: Registry) -> str:
-    games = [t for t in registry.tools.values() if _is_game(t)]
+    games = [t for t in registry.tools.values() if _is_game(t) and not t.hidden]
     if not games:
         return "🎮 *Games*\n\nNo games are installed yet."
     lines = ["🎮 *Games* — pick one:", ""]
-    lines += [f"{g.emoji} *{g.title}* — {g.description}\n   _play {g.name}_" for g in games]
+    lines += [f"{g.emoji} *{g.title}*" + (f" — {_about(g)}" if _about(g) else "") + f"\n   _play {g.name}_" for g in games]
     return "\n".join(lines)
 
 
@@ -72,7 +135,7 @@ QUESTION_WORDS = {"what", "whats", "who", "whom", "why", "when", "where", "how",
 def _suggestion(registry: Registry, text: str) -> str | None:
     """The installed example closest to what was typed (a typo or a half-remembered phrase), if there is a close one."""
     wanted = " ".join(text.lower().split())
-    examples = {ex.lower(): ex for s in registry.specs() for ex in s.examples}
+    examples = {ex.lower(): ex for s in registry.specs() for ex in shown(s.examples)}
     close = difflib.get_close_matches(wanted, list(examples), n=1, cutoff=0.7)
     return examples[close[0]] if close else None
 
@@ -109,13 +172,13 @@ STATEMENT = re.compile(r"\b(?:is|are|was|were|am|has|have|had|love|loved|like|li
 ABOUT_BOT = re.compile(r"^(?:what(?:'s| is) your|do you (?:like|have|know|eat|sleep|love|think)|are you|your (?:name|age|favou?rite)|how old are you|where (?:do you|are you))", re.I)
 
 
-SHOWCASE = ["weather", "news", "currency", "wiki", "quran", "calc", "clock", "fun", "dice", "country", "movie", "book"]     # what to mention first
+SHOWCASE = ["weather", "news", "currency", "units", "calc", "clock", "wiki", "country", "book", "movie", "quran", "fun", "dice"]     # what to mention first
 
 
 def _can_do(registry: Registry) -> str:
     """One line of what Rory can do, most useful first (not alphabetical: a list starting with 'books, calculator' undersells it)."""
     order = {name: i for i, name in enumerate(SHOWCASE)}
-    tools = sorted((t for t in registry.tools.values() if not _is_game(t)), key=lambda t: (order.get(t.name, len(order)), t.name))
+    tools = sorted((t for t in registry.tools.values() if not _is_game(t) and not t.hidden), key=lambda t: (order.get(t.name, len(order)), t.name))
     names = ", ".join(t.title.lower() for t in tools[:7])
     games = " and games" if any(_is_game(t) for t in registry.tools.values()) else ""
     return f"I can help with {names}{games}."
@@ -170,13 +233,13 @@ def not_understood(registry: Registry, times: int = 1, text: str = "") -> str:
 
 def _feature_lines(spec: FeatureSpec) -> list[str]:
     out = [f"• *{spec.full_name}*" + (f" — {spec.description}" if spec.description else "")]
-    if spec.examples:
-        out.append("   _" + " · ".join(spec.examples[:MAX_EXAMPLES]) + "_")
+    if ex := shown(spec.examples):
+        out.append("   _" + " · ".join(ex[:MAX_EXAMPLES]) + "_")
     return out
 
 
 def tool_page(tool: Tool) -> str:
-    lines = [f"{tool.emoji} *{tool.title}*" + (f" — {tool.description}" if tool.description else ""), ""]
+    lines = [f"{tool.emoji} *{tool.title}*" + (f" — {_about(tool)}" if _about(tool) else ""), ""]
     for f in tool.features.values():
         lines += _feature_lines(f.spec)
     return "\n".join(lines)
@@ -188,29 +251,38 @@ def feature_page(spec: FeatureSpec) -> str:
         lines.append(spec.description)
     if spec.inputs:
         lines.append("Needs: " + ", ".join(f"{n}{'' if i.required else ' (optional)'}" for n, i in spec.inputs.items()))
-    if spec.examples:
-        lines.append("Try: _" + " · ".join(spec.examples[:MAX_EXAMPLES]) + "_")
+    if ex := shown(spec.examples):
+        lines.append("Try: _" + " · ".join(ex[:MAX_EXAMPLES]) + "_")
     lines.append(f"_part of the *{spec.tool}* tool_")
     return "\n".join(lines)
 
 
 def full_help(registry: Registry) -> str:
+    """The complete index, grouped: every tool with the names of its features (examples live one level down, in `help <tool>`).
+    Compact on purpose: a full listing with examples is several thousand characters and would be cut off by the message length cap."""
     if not registry.tools:
         return home_menu(registry)
-    return "\n\n".join(tool_page(t) for t in registry.tools.values())
+    blocks = []
+    for (key, emoji, title, _b, _a), tools in grouped(registry):
+        rows = [f"{t.emoji} *{t.title}* — " + " · ".join(f.spec.name.replace("_", " ") for f in t.features.values()) for t in tools]
+        blocks.append("\n".join([f"━━ {emoji} *{title.upper()}* ━━", *rows]))
+    blocks.append(tip("*help <tool>* shows a tool's features with examples (e.g. *help weather*) · *help <tool>.<feature>* explains one"))
+    return "\n\n".join(blocks)
 
 
 def help_for(registry: Registry, arg: str) -> str:
-    """`help`, `help all`, `help weather` (a tool), `help weather.current` or `help forecast` (a feature)."""
+    """`help`, `help all`, `help everyday` (a group), `help weather` (a tool), `help weather.current` or `help forecast` (a feature)."""
     arg = arg.strip().lower().lstrip("!/")
     if not arg:
         return home_menu(registry)
     if arg == "all":
         return full_help(registry)
-    if tool := registry.tools.get(arg):
+    if tool := registry.tools.get(arg):                           # a tool's own name wins over a group word ("fun", "quran")
         return tool_page(tool)
+    if found := find_category(registry, arg):
+        return category_page(registry, *found)
     specs = registry.specs()
     hits = [s for s in specs if arg in (s.full_name, s.name)]
     if len(hits) == 1:
         return feature_page(hits[0])
-    return f"🤷 No tool or feature called *{arg}*. Send *help all* for the full list."
+    return f"🤷 No group, tool or feature called *{arg}*. Send *help* for the groups or *help all* for everything."

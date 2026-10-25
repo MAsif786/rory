@@ -85,7 +85,7 @@ class EscapeDungeon(Game):
     title = "Escape the Dungeon"
     order = 60
     aliases = ("dungeon", "escape the dungeon", "escape dungeon", "dungeon escape", "dungeon game", "adventure game", "escape room")
-    description = "Explore rooms, grab keys, dodge traps, escape. Go left, right or forward."
+    description = "Escape the rooms"
 
     def __init__(self) -> None:
         self.rooms = generate()

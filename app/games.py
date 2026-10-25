@@ -51,7 +51,7 @@ def game_tool(cls: type[Game], *, emoji: str = "🎮") -> Tool:
     phrases = [p for n in sorted(names) for p in (f"play {n}", f"let's play {n}", f"lets play {n}", f"start {n}", f"play a game of {n}")]
     phrases += [n for n in sorted(names) if n not in ambiguous]
     phrases = list(dict.fromkeys(phrases))
-    tool = Tool(cls.key, title=cls.title, emoji=emoji, description=cls.description)
+    tool = Tool(cls.key, title=cls.title, emoji=emoji, description=cls.description, category="games")
 
     @tool.feature("start", kind="session", description=f"Play {cls.title}", phrases=phrases,
                   examples=[f"play {cls.key}"])

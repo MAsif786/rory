@@ -4,6 +4,18 @@
 2. Edit `tool.py`. It must define `tool = Tool("<name>")`. No core code changes needed.
 3. Run `python -m pytest`. A bad tool is rejected at startup with a clear log line; other tools still load.
 
+## Where it shows up in help
+`help` is organised into groups, not one long list. Choose yours with `category=`: `everyday` (weather, news, money, time, maths), `knowledge` (Wikipedia, countries,
+books, movies), `islamic`, `web` (GitHub, IP, links, search), `entertainment` (jokes, dice), `chat` (greetings and small talk). Games are the `games` group
+automatically. A tool with no (or an unknown) category appears under **More**, so it is never hidden, but a test fails until the tool picks a group.
+Give the tool a clear `title` and a SHORT `description` (2-4 words, at most 30 characters; a test enforces it): the group page shows both, plus up to three of your
+`examples`. An example that looks like a link (`https://example.com`) is never displayed in help (chat apps turn it into a preview); it still counts for the tests.
+`hidden=True` keeps a tool out of the help pages (greetings use it) while it keeps working, and `help <name>` still opens it.
+```python
+tool = Tool("tarot", category="entertainment", title="Tarot", emoji="🔮", description="Draw a card")
+```
+Users reach it with `help` (the groups), `help entertainment` (the group, also by aliases like `fun`-words), `help tarot` (its features), or `help all` (a compact index).
+
 ## Answer tool
 ```python
 tool = Tool("weather", title="Weather", emoji="🌦️", description="Current weather and forecasts")  # title/emoji/description show in help

@@ -10,7 +10,7 @@ class NumberGuess(Game):
     order = 10
     aliases = ("number guess", "guess the number", "guess number", "guess a number", "guessing game", "number guessing game", "number game")
     ambiguous_aliases = ("guess", "number game")
-    description = "Guess my secret number between 1 and 100."
+    description = "Guess my number (1-100)"
 
     LOW, HIGH = 1, 100
     group_ok = True

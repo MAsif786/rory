@@ -20,7 +20,7 @@ class TicTacToe(Game):
     order = 30
     aliases = ("ttt", "tictactoe", "tic tac toe", "tic-tac-toe", "tic tac", "tik tak toe", "tic tak toe", "xo", "xox", "x o", "noughts and crosses", "naughts and crosses", "x and o", "xs and os")
     ambiguous_aliases = ("xo", "x o")
-    description = "You are ❌, the bot is ⭕. Play with squares 1-9."
+    description = "Play against the bot"
 
     def __init__(self) -> None:
         self.board = [""] * 9

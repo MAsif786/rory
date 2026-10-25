@@ -7,7 +7,7 @@ from app.core.schemas import Followup, Input, UserError
 from app.core.tool import Tool
 from app.wikipedia import cut, page_url, summary
 
-tool = Tool("search", title="Web search", emoji="🔎", description="Search the web with Google")
+tool = Tool("search", category="web", title="Web search", emoji="🔎", description="Web search")
 
 QUERY = r"(?!(?:i|me|my|you|your|we|us|our)\b)[^\n]{2,100}"
 log = logging.getLogger("wa-bot.search")

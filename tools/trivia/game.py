@@ -37,7 +37,7 @@ class Trivia(Game):
     title = "Trivia"
     order = 70
     aliases = ("trivia", "trivia game", "trivia question", "a trivia question")
-    description = "One multiple-choice question. First correct answer wins."
+    description = "One quick question"
     group_ok = True
     rounds = 1
     points = 10
@@ -110,5 +110,5 @@ class Quiz(Trivia):
     title = "Quiz"
     order = 80
     aliases = ("quiz", "quiz me", "quiz game", "quizz", "take a quiz", "start a quiz", "a quiz")
-    description = "5 trivia questions in a row, with a final scoreboard."
+    description = "5 trivia questions"
     rounds = 5

@@ -6,7 +6,7 @@ from app.core.schemas import Input, UserError
 from app.core.tool import Tool
 from app.wikipedia import cut, page_url, summary
 
-tool = Tool("fun", title="Fun", emoji="😂", description="Jokes and fun facts", synonyms={"gag": "joke", "jest": "joke", "jape": "joke", "pun": "joke"})
+tool = Tool("fun", category="entertainment", title="Jokes & facts", emoji="😂", description="Make me laugh", synonyms={"gag": "joke", "jest": "joke", "jape": "joke", "pun": "joke"})
 
 
 @tool.feature(
@@ -34,7 +34,7 @@ async def fact(ctx):
 
 
 @tool.feature(
-    "fact_about", description="A fun fact about a topic (did you know something about the moon)",
+    "fact_about", description="A fun fact about a topic",
     phrases=["fact about {topic}", "a fact about {topic}", "fun fact about {topic}", "tell me a fact about {topic}", "tell me a fun fact about {topic}",
              "did you know something about {topic}", "did you know about {topic}", "did you know anything about {topic}",
              "tell me something interesting about {topic}", "something interesting about {topic}", "interesting facts about {topic}",

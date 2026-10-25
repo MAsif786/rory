@@ -5,14 +5,14 @@ from app.core.schemas import Followup, Input, UserError
 from app.core.tool import Tool
 from app.wikipedia import cut, page_url, summary
 
-tool = Tool("movie", title="Movies", emoji="🎬", description="Movie info and ratings", synonyms={"flick": "film"})
+tool = Tool("movie", category="knowledge", title="Movies", emoji="🎬", description="Movie info", synonyms={"flick": "film"})
 
 TITLE = (r"(?!(?:i|me|my|you|your|we|us|our|it|this|that|these|those|there|was|is|are|were|has|have|had|what|who|how|why|when|where|which)\b)"
          r"[^\n]{1,80}(?<!\ba)(?<!\ban)(?<!\bthe)(?<!\bis)(?<!\bwas)(?<!\bare)(?<!\bwere)(?<!\bto)(?<!\bof)(?<!\band)(?<!\bor)")
 
 
 @tool.feature(
-    "info", repeat="reuse", description="Movie info (ratings with a TMDB key, else a Wikipedia summary)",
+    "info", repeat="reuse", description="Movie info",
     phrases=["movie {title}", "film {title}", "the movie {title}", "the film {title}", "{title} movie", "{title} film",
              "tell me about the movie {title}", "tell me about the film {title}", "is {title} a good movie", "is {title} a good film",
              "is {title} worth watching", "info on the movie {title}"],

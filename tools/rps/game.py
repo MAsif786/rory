@@ -13,7 +13,7 @@ class RockPaperScissors(Game):
     title = "Rock Paper Scissors"
     order = 20
     aliases = ("rps", "rock paper scissors", "rock paper scissor", "rockpaperscissors", "rock paper", "janken", "roshambo")
-    description = "Beat the bot. Send rock, paper or scissors."
+    description = "Beat the bot"
 
     def __init__(self) -> None:
         self.wins = self.losses = self.draws = 0

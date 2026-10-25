@@ -11,7 +11,7 @@ from app.core.schemas import Followup, Input, UserError
 from app.core.tool import Tool
 from app.format import num, tip
 
-tool = Tool("news", title="News", emoji="📰", description="Today's headlines, or news about any topic", synonyms={"tidings": "news", "headline": "headlines"})
+tool = Tool("news", category="everyday", title="News", emoji="📰", description="Headlines & topic news", synonyms={"tidings": "news", "headline": "headlines"})
 
 MAX_ITEMS = 5
 MAX_BYTES = 1_000_000
@@ -150,7 +150,7 @@ async def headlines(ctx, pick):
 
 
 @tool.feature(
-    "about", description="Recent news about a topic (news about Mars, Pakistan news)", repeat="reuse",
+    "about", description="Recent news on a topic", repeat="reuse",
     phrases=["news about {topic}", "news on {topic}", "news for {topic}", "news from {topic}", "news in {topic}", "latest news about {topic}",
              "latest news on {topic}", "latest {topic} news", "today's news about {topic}", "{topic} news", "{topic} headlines",
              "{topic} news today", "what's the news on {topic}", "any news about {topic}", "search news for {topic}", "news {topic}"],

@@ -2,7 +2,7 @@
 from app.core.schemas import Followup, Input, UserError
 from app.core.tool import Tool
 
-tool = Tool("currency", title="Currency", emoji="💱", description="Convert money between currencies", synonyms={"exchange": "convert"})
+tool = Tool("currency", category="everyday", title="Currency", emoji="💱", description="Currency conversion", synonyms={"exchange": "convert"})
 
 NAMES = {"dollar": "USD", "dollars": "USD", "buck": "USD", "bucks": "USD", "euro": "EUR", "euros": "EUR", "pound": "GBP",
          "pounds": "GBP", "sterling": "GBP", "rupee": "PKR", "rupees": "PKR", "rs": "PKR", "riyal": "SAR", "riyals": "SAR",
@@ -24,7 +24,7 @@ def _code(word: str) -> str:
 
 
 @tool.feature(
-    "convert", repeat="reuse", description="Convert an amount between currencies (also: 100 usd to eur, gbp)",
+    "convert", repeat="reuse", description="Convert an amount between currencies",
     phrases=["{amount} {base} to {quote}", "{amount} {base} in {quote}", "convert {amount} {base} to {quote}",
              "convert {amount} {base} {quote}", "convert {amount} {base} into {quote}", "how much is {amount} {base} in {quote}",
              "{base} to {quote}", "{base} in {quote}", "convert {base} to {quote}", "how much is a {base} in {quote}",

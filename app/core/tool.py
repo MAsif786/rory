@@ -12,8 +12,11 @@ class Feature:
 
 
 class Tool:
-    def __init__(self, name: str, *, title: str = "", emoji: str = "🧩", description: str = "", synonyms: dict[str, str] | None = None) -> None:
+    def __init__(self, name: str, *, title: str = "", emoji: str = "🧩", description: str = "", synonyms: dict[str, str] | None = None,
+                 category: str = "", hidden: bool = False) -> None:
         self.name = name
+        self.hidden = hidden                           # True: works as usual but is not listed in help (e.g. greetings); `help <name>` still opens it
+        self.category = category                       # which help group lists it: everyday | knowledge | islamic | web | entertainment | games | chat
         self.synonyms = {k.lower(): v.lower() for k, v in (synonyms or {}).items()}   # {"gag": "joke"}: words people use -> words our phrases use
         self.title, self.emoji, self.description = title or name.replace("_", " ").title(), emoji, description      # shown in help/menu
         self.features: dict[str, Feature] = {}

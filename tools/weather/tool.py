@@ -8,7 +8,7 @@ from app.nlu.entities import DATE_WORDS, canonical, days_ahead, describe
 from . import service
 from .schemas import Day
 
-tool = Tool("weather", title="Weather", emoji="🌦️", description="Current weather and forecasts", synonyms={"climate": "weather", "prognosis": "forecast"})
+tool = Tool("weather", category="everyday", title="Weather", emoji="🌦️", description="Weather & forecasts", synonyms={"climate": "weather", "prognosis": "forecast"})
 
 WMO = {
     0: ("Clear sky", "☀️"), 1: ("Mainly clear", "🌤️"), 2: ("Partly cloudy", "⛅"), 3: ("Overcast", "☁️"),

@@ -21,7 +21,7 @@ CHECKLIST (the tests do most of the checking: `pytest -q`)
 from app.core.schemas import Followup, Input
 from app.core.tool import Tool
 
-tool = Tool("template", title="Template", emoji="🧩", description="What this tool does",
+tool = Tool("template", category="everyday", title="Template", emoji="🧩", description="Short: 2-4 words",
             synonyms={"greeting": "greet"})   # reviewed output of scripts/suggest_synonyms.py: {word users say: word my phrases use}
 
 

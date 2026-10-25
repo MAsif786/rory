@@ -9,7 +9,7 @@ class HigherLower(Game):
     title = "Higher or Lower"
     order = 65
     aliases = ("higher or lower", "higher lower", "hi lo", "high low", "hilo", "higher or lower game")
-    description = "Guess if the next card is higher or lower. Reach 5 in a row to win."
+    description = "Higher or lower card"
     group_ok = False
 
     TARGET = 5

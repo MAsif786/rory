@@ -13,7 +13,7 @@ class MemoryChallenge(Game):
     order = 50
     aliases = ("memory challenge", "memory game", "emoji memory", "memory test", "remember game", "memory")
     ambiguous_aliases = ("memory",)
-    description = "Memorize the emoji sequence, then repeat it. Each round adds one more."
+    description = "Repeat the emoji sequence"
 
     def __init__(self) -> None:
         self.round = 0

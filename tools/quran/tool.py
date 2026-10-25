@@ -10,7 +10,7 @@ from app.core.tool import Tool
 
 from . import service as q
 
-tool = Tool("quran", title="Quran", emoji="📖", description="Verses, translations, search, recitation and tafsir", synonyms={"koran": "quran", "quraan": "quran"})
+tool = Tool("quran", category="islamic", title="Quran", emoji="📖", description="Verses, search & tafsir", synonyms={"koran": "quran", "quraan": "quran"})
 
 REF = r"\d{1,3}\s*[:.]\s*\d{1,3}(?:\s*-\s*\d{1,3})?"
 LANG = "(?:" + "|".join([*q.LANG_WORDS, *q.LANGS, "ar"]) + ")"
@@ -20,7 +20,7 @@ LANG_IN = Input(default="en", pattern=LANG)
 
 
 @tool.feature(
-    "verse", repeat="reuse", description="A verse or range, optionally in another language (2:255, 2:255-257, 2:255 in urdu)",
+    "verse", repeat="reuse", description="A verse or range, in any language",
     phrases=["{ref}", "quran {ref}", "read quran {ref}", "read {ref}", "ayah {ref}", "ayat {ref}", "verse {ref}", "surah {ref}", "{ref} in {lang}", "quran {ref} in {lang}",
              "quran {ref} {lang}", "{ref} {lang}", "ayah {ref} in {lang}", "verse {ref} in {lang}"],
     examples=["2:255", "quran 112:1-4 in urdu"],
@@ -31,7 +31,7 @@ async def verse(ctx, ref, lang):
 
 
 @tool.feature(
-    "kursi", repeat="reuse", description="Ayat al-Kursi (2:255), optionally in another language",
+    "kursi", repeat="reuse", description="Ayat al-Kursi",
     phrases=["ayat al kursi", "ayat ul kursi", "ayatul kursi", "ayat e kursi", "ayat al-kursi", "ayah al kursi", "throne verse",
              "ayat al kursi in {lang}", "ayatul kursi in {lang}", "ayat ul kursi in {lang}"],
     examples=["ayat al kursi in urdu", "ayatul kursi"],
@@ -55,7 +55,7 @@ async def random_verse(ctx, lang):
 
 
 @tool.feature(
-    "search", repeat="reuse", description="Search the translation for a word or topic (verses about patience)",
+    "search", repeat="reuse", description="Search verses by topic",
     phrases=["quran search {kw}", "search quran for {kw}", "search the quran for {kw}", "verses about {kw}", "verses on {kw}",
              "ayat about {kw}", "ayahs about {kw}", "find verses about {kw}", "quran verses about {kw}", "what does the quran say about {kw}"],
     examples=["verses about patience", "search quran for mercy"],
@@ -95,7 +95,7 @@ async def surah(ctx, name, lang):
 
 
 @tool.feature(
-    "audio", repeat="reuse", description="Recitation of a verse (Mishary Alafasy) as an audio link",
+    "audio", repeat="reuse", description="Recitation link for a verse",
     phrases=["audio {ref}", "quran audio {ref}", "recite {ref}", "listen to {ref}", "recitation of {ref}", "play ayah {ref}", "audio of {ref}"],
     examples=["audio 1:1", "recite 2:255"],
     inputs={"ref": Input(required=True, pattern=REF)})
@@ -120,7 +120,7 @@ async def surah_audio(ctx, name):
 
 
 @tool.feature(
-    "tafsir", repeat="reuse", description="Arabic tafsir of a verse (muyassar; also jalalayn, qurtubi, waseet, baghawi)",
+    "tafsir", repeat="reuse", description="Arabic tafsir of a verse",
     keywords=["tafsir", "tafseer"],
     phrases=["tafsir {ref}", "tafseer {ref}", "quran tafsir {ref}", "tafsir of {ref}", "tafsir {ref} {book}", "tafsir of {ref} by {book}",
              "explain verse {ref}"],

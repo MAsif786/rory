@@ -6,7 +6,7 @@ from app.core.schemas import Followup, Input
 from app.core.tool import Tool
 from app.geo import geocode
 
-tool = Tool("clock", title="Clock", emoji="🕐", description="Local time in any city")
+tool = Tool("clock", category="everyday", title="Clock", emoji="🕐", description="Time in any city")
 
 PLACE = r"[^\d]{2,40}"
 NOT_PLACES = ["bed time", "story time", "game time", "prime time", "free time", "real time", "part time", "full time", "long time",
@@ -15,7 +15,7 @@ NOT_PLACES = ["bed time", "story time", "game time", "prime time", "free time", 
 
 
 @tool.feature(
-    "time", description="Local time in a city or timezone (try: time in Tokyo, or Asia/Karachi)",
+    "time", description="Local time in a city or timezone",
     phrases=["time in {place}", "what time is it in {place}", "what's the time in {place}", "whats the time in {place}",
              "what is the time in {place}", "current time in {place}", "local time in {place}", "time now in {place}",
              "{place} time", "time {place}", "what time is it", "what's the time", "time now", "current time", "time"],

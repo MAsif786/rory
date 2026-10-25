@@ -5,7 +5,7 @@ from datetime import datetime
 from app.core.schemas import Input
 from app.core.tool import Tool
 
-tool = Tool("greetings", title="Greetings", emoji="👋", description="Say hi, thanks or goodbye, or ask who I am", synonyms={"farewell": "bye", "gratitude": "thanks", "cheerio": "bye", "adieu": "goodbye", "adios": "goodbye", "sayonara": "goodbye", "hullo": "hello",
+tool = Tool("greetings", category="chat", hidden=True, title="Greetings", emoji="👋", description="Small talk", synonyms={"farewell": "bye", "gratitude": "thanks", "cheerio": "bye", "adieu": "goodbye", "adios": "goodbye", "sayonara": "goodbye", "hullo": "hello",
                       "arrivederci": "goodbye", "goodby": "goodbye", "thankyou": "thanks", "thnx": "thanks", "thanx": "thanks", "tnx": "thanks"})
 
 REPEAT_WINDOW = 600                       # seconds: greet again within this and Rory says "again"

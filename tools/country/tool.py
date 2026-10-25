@@ -6,14 +6,14 @@ import httpx
 from app.core.schemas import Followup, Input, UserError
 from app.core.tool import Tool
 
-tool = Tool("country", title="Countries", emoji="🌍", description="Facts about any country", synonyms={"nation": "country"})
+tool = Tool("country", category="knowledge", title="Countries", emoji="🌍", description="Country facts", synonyms={"nation": "country"})
 
 # a country is one to four words and never starts like a list or a request ("list of jokes or" is not a country)
 NAME = r"(?!(?:list|any|some|all|my|your|more|best|top)\b)[A-Za-z'.-]+(?: (?:of |the |and |d')?[A-Za-z'.-]+){0,3}"
 
 
 @tool.feature(
-    "facts", repeat="reuse", description="Capital, population, languages and currency of a country",
+    "facts", repeat="reuse", description="Capital, population, language, currency",
     phrases=["country {country}", "the country {country}", "capital of {country}", "what is the capital of {country}",
              "what's the capital of {country}", "population of {country}", "what is the population of {country}",
              "facts about {country}", "tell me about the country {country}", "{country} country facts", "{country} facts"],

@@ -26,7 +26,7 @@ class Blackjack(Game):
     order = 90
     aliases = ("blackjack", "black jack", "bj", "21", "twenty one", "twenty-one", "card game", "cards")
     ambiguous_aliases = ("bj", "21", "twenty one", "twenty-one", "cards")
-    description = "Beat the dealer to 21. hit / stand."
+    description = "Beat the dealer to 21"
     points = 15
 
     def __init__(self) -> None:

@@ -4,7 +4,7 @@ import ipaddress
 from app.core.schemas import Input, UserError
 from app.core.tool import Tool
 
-tool = Tool("ipinfo", title="IP lookup", emoji="🌐", description="Where does an IP address live?")
+tool = Tool("ipinfo", category="web", title="IP lookup", emoji="🌐", description="IP address lookup")
 
 IP = r"\d{1,3}(?:\.\d{1,3}){3}"
 

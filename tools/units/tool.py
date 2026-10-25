@@ -2,7 +2,7 @@
 from app.core.schemas import Input, UserError
 from app.core.tool import Tool
 
-tool = Tool("units", title="Units", emoji="📏", description="Convert lengths, weights, volumes and temperatures")
+tool = Tool("units", category="everyday", title="Units", emoji="📏", description="Unit conversion")
 
 ALIASES = {"meter": "m", "meters": "m", "metre": "m", "metres": "m", "kilometer": "km", "kilometers": "km", "kilometre": "km",
            "kilometres": "km", "centimeter": "cm", "centimeters": "cm", "millimeter": "mm", "mile": "mi", "miles": "mi",
@@ -31,7 +31,7 @@ def convert_units(value: float, a: str, b: str) -> str | None:
 
 
 @tool.feature(
-    "convert", description="Convert between units (5 km to miles, 20 c to f)",
+    "convert", description="Convert between units",
     phrases=["{value} {src} to {dst}", "{value} {src} in {dst}", "convert {value} {src} to {dst}", "how many {dst} in {value} {src}",
              "{value}{src} to {dst}", "{value}{src} in {dst}", "what's {value} {src} in {dst}", "what is {value} {src} in {dst}",
              "how many {dst} are in {value} {src}", "how many {dst} is {value} {src}", "how many {dst} in a {src}"],

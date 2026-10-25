@@ -11,7 +11,7 @@ from app.core.tool import Tool
 from . import linkpeek
 
 log = logging.getLogger("wa-bot.link")
-tool = Tool("link", title="Link preview", emoji="🔗", description="Summaries, tech stack and security checks for any link")
+tool = Tool("link", category="web", title="Link preview", emoji="🔗", description="Link previews")
 
 SECTIONS = {
     "links": "links", "urls": "links", "outbound": "links",
@@ -128,7 +128,7 @@ async def _section(name: str, r: linkpeek.Report) -> str:
 
 
 @tool.feature(
-    "peek", repeat="reuse", description="Deep page preview: summary, metadata, tech & security. Add links/contacts/tech/security/text/all for a section",
+    "peek", repeat="reuse", description="Page preview (add tech, security, links...)",
     phrases=["{url}", "link {url}", "peek {url}", "preview {url}", "summarize {url}", "summarise {url}", "what is {url}",
              "open {url}", "{section} of {url}", "{section} for {url}", "{url} {section}", "{section} {url}"],
     keywords=["link"],

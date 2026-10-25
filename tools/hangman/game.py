@@ -13,7 +13,7 @@ class Hangman(Game):
     title = "Hangman"
     order = 40
     aliases = ("hangman", "hang man", "hangmen")
-    description = "Guess the word letter by letter before you run out of lives."
+    description = "Guess the word"
     group_ok = True
 
     def __init__(self) -> None:

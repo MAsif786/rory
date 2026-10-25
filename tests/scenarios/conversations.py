@@ -61,7 +61,7 @@ GREETINGS = [
 HELP = [
     Scenario("help lists tools; help <tool> details; help <feature>", [
         T("help", has=["Home", "Weather", "Games"]), T("help weather", has="weather.current"), T("help weather.current", has=["Needs:", "Try:"]),
-        T("help nope", has="No tool or feature called")]),
+        T("help nope", has="No group, tool or feature called")]),
     Scenario("menu aliases", [T("menu", has="Home"), T("!help", has="Home"), T("/menu", has="Home"), T("start", has="Home")]),
     Scenario("games menu", [T("games", has=["Games", "play blackjack"]), T("play a game", has="Games"), T("i'm bored", has="Games")]),
     Scenario("help works mid-game and keeps the game", [T("play hangman", session="hangman"), T("menu", has="Home", session="hangman"),

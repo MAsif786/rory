@@ -2,14 +2,14 @@
 from app.core.schemas import Followup, Input, UserError
 from app.core.tool import Tool
 
-tool = Tool("book", title="Books", emoji="📖", description="Look up books and authors", synonyms={"writer": "author"})
+tool = Tool("book", category="knowledge", title="Books", emoji="📖", description="Books & authors", synonyms={"writer": "author"})
 
 TITLE = (r"(?!(?:i|me|my|you|your|we|us|our|it|this|that|these|those|there|was|is|are|were|has|have|had|what|who|how|why|when|where|which)\b)"
          r"[^\n]{1,80}(?<!\ba)(?<!\ban)(?<!\bthe)(?<!\bis)(?<!\bwas)(?<!\bare)(?<!\bwere)(?<!\bto)(?<!\bof)(?<!\band)(?<!\bor)")
 
 
 @tool.feature(
-    "info", repeat="reuse", description="Book info from Open Library (who wrote Dune, book 1984)",
+    "info", repeat="reuse", description="Book info",
     phrases=["book {title}", "the book {title}", "novel {title}", "who wrote {title}", "who is the author of {title}",
              "author of {title}", "tell me about the book {title}", "{title} book", "{title} novel"],
     keywords=["novel", "isbn"],

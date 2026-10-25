@@ -25,8 +25,8 @@ async def say(bot, text):
 @pytest.mark.parametrize("word", ["menu", "home", "start", "help", "!help", "/menu", "Menu"])
 async def test_menu_aliases_show_home(bot, word):
     out = await say(bot, word)
-    assert out.startswith("🏠 *Home*") and "🌦️ *Weather* — Weather and forecasts" in out
-    assert "_weather in lahore_" in out and "🎮 *Games*" in out and "🧩 Countdown" in out   # session tools are listed under Games, with default metadata
+    assert out.startswith("🏠 *Home*") and "🧩 *More* — Weather and forecasts" in out                      # a tool with no category is listed under More, never hidden
+    assert "_weather in lahore_" in out and "🎮 *Games* — Countdown" in out                  # session tools are the Games group, with default metadata
 
 
 async def test_help_tool_feature_and_all(bot):
@@ -35,11 +35,11 @@ async def test_help_tool_feature_and_all(bot):
     assert "Needs: place, day (optional)" in page and "part of the *weather* tool" in page
     assert "weather.current" in await say(bot, "help current")             # unique short feature name
     allp = await say(bot, "help all")
-    assert "weather.current" in allp and "countdown.start" in allp
+    assert "Weather" in allp and "current" in allp and "Countdown" in allp and "start" in allp
 
 
 async def test_help_unknown(bot):
-    assert "No tool or feature called *nope*" in await say(bot, "help nope")
+    assert "No group, tool or feature called *nope*" in await say(bot, "help nope")
 
 
 async def test_hi_is_a_greeting_not_the_menu(make_tools):
@@ -54,7 +54,7 @@ async def test_hi_is_a_greeting_not_the_menu(make_tools):
 async def test_menu_and_help_work_mid_game_without_ending_it(bot):
     await say(bot, "play countdown")
     assert "🏠 *Home*" in await say(bot, "menu")
-    assert "countdown.start" in await say(bot, "help all")
+    assert "Countdown" in await say(bot, "help all")
     assert await say(bot, "x") == "2"                                       # game is still on
 
 

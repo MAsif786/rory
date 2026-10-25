@@ -8,7 +8,7 @@ import httpx
 from app.core.schemas import Input, UserError
 from app.core.tool import Tool
 
-tool = Tool("github", title="GitHub", emoji="🐙", description="Search repos and show repo details")
+tool = Tool("github", category="web", title="GitHub", emoji="🐙", description="Repos & search")
 
 REPO = r"[\w.-]+/[\w.-]+"
 API = "https://api.github.com"
@@ -51,7 +51,7 @@ async def search(ctx, query):
 
 
 @tool.feature(
-    "repo", repeat="reuse", description="Details of a GitHub repository (stats, languages, topics, latest release)",
+    "repo", repeat="reuse", description="Details of a repository",
     phrases=["repo {repo}", "the repo {repo}", "github {repo}", "repository {repo}", "gh repo {repo}"],
     keywords=["repo", "repository"],
     examples=["repo tiangolo/fastapi", "github psf/requests"],

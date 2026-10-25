@@ -6,7 +6,7 @@ import operator
 from app.core.schemas import Input, UserError
 from app.core.tool import Tool
 
-tool = Tool("calc", title="Calculator", emoji="🧮", description="Do maths: 25*8, sqrt(144), 15% of 200",
+tool = Tool("calc", category="everyday", title="Calculator", emoji="🧮", description="Maths & percentages",
             synonyms={"pct": "percent", "math": "calc", "maths": "calc"})
 
 OPS = {ast.Add: operator.add, ast.Sub: operator.sub, ast.Mult: operator.mul, ast.Div: operator.truediv,

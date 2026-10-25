@@ -5,7 +5,7 @@ import re
 from app.core.schemas import Input, UserError
 from app.core.tool import Tool
 
-tool = Tool("dice", title="Dice", emoji="🎲", description="Coin, dice and decisions", synonyms={"select": "choose"})
+tool = Tool("dice", category="entertainment", title="Coin & dice", emoji="🎲", description="Coin, dice & picks", synonyms={"select": "choose"})
 
 
 @tool.feature(
@@ -18,7 +18,7 @@ async def flip(ctx):
 
 
 @tool.feature(
-    "roll", description="Roll dice: 'roll a dice', 'roll 2d6' (two dice), 'roll d20' (one 20-sided die)",
+    "roll", description="Roll dice (2d6 = two dice)",
     phrases=["roll {dice}", "roll a dice", "roll a die", "roll the dice", "roll dice", "throw a dice", "throw the dice", "throw dice", "throw a die", "dice", "die"],
     examples=["roll a dice", "roll 2d6"],
     negatives=["roll call", "roll back", "roll out", "rock and roll"],
@@ -39,7 +39,7 @@ async def roll(ctx, dice):
 
 
 @tool.feature(
-    "choose", description="Pick one option for you (choose pizza, sushi or tacos)",
+    "choose", description="Pick one for you",
     phrases=["choose {options}", "choose between {options}", "choose from {options}", "pick {options}", "pick between {options}",
              "decide {options}", "decide between {options}"],
     keywords=["choose", "decide"],
