@@ -3,11 +3,15 @@
 Flow of one message:  parse -> (ignore own / empty / non-text) -> duplicate? -> group etiquette -> [background:]
 per-chat ordering -> rate limit -> length check -> Bot.respond -> send -> one structured log line.
 """
+import asyncio
+import json
 import logging
 import time
+from contextlib import asynccontextmanager
 from dataclasses import dataclass
 
 from fastapi import BackgroundTasks, FastAPI, Request
+from fastapi.responses import JSONResponse
 
 from app import replies, trace
 from app.core.context import ContextStore
@@ -21,13 +25,46 @@ from app.intent.rule_based import decide
 from app.logsetup import chat_ref, setup_logging
 from app.settings import get_settings
 from app.smart import Bot
+from app import waha
 from app.waha import send_text
 
 settings = get_settings()                          # fails fast with a readable message if the environment is wrong
 setup_logging(settings.log_json, settings.log_level)
 log = logging.getLogger("wa-bot")
 
-app = FastAPI(title="Rory")
+queue: asyncio.Queue | None = None            # set while the app runs (see lifespan); None means "no workers": fall back to background tasks
+_workers: list[asyncio.Task] = []
+
+
+async def _worker() -> None:
+    while True:
+        job = await queue.get()
+        try:
+            await process(job)
+        finally:
+            queue.task_done()
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    """Start the worker pool. The webhook only parses and enqueues, so WAHA gets its answer immediately however busy the bot is."""
+    global queue
+    queue = asyncio.Queue(maxsize=settings.queue_size)
+    _workers[:] = [asyncio.create_task(_worker()) for _ in range(settings.workers)]
+    try:
+        yield
+    finally:
+        try:
+            await asyncio.wait_for(queue.join(), timeout=10)             # let queued replies finish on a normal shutdown
+        except asyncio.TimeoutError:
+            log.warning("shutdown: %d messages were still queued", queue.qsize())
+        for w in _workers:
+            w.cancel()
+        queue = None
+        await waha.close()
+
+
+app = FastAPI(title="Rory", lifespan=lifespan)
 
 RATE_NOTICE = "⏳ You're sending messages quite fast. Please wait a few seconds and try again."
 TOO_LONG = "✂️ That message is too long for me (max {n} characters). Could you shorten it?"
@@ -67,26 +104,35 @@ class Job:
     message_id: str | None
 
 
-def parse(event: dict) -> tuple[Job | None, str]:
-    """Cheap, I/O-free triage of a webhook event: (job, "") to process it, or (None, reason) to ignore it."""
-    if event.get("event") != "message":
+def parse(event) -> tuple[Job | None, str]:
+    """Cheap, I/O-free triage of a webhook event: (job, "") to process it, or (None, reason) to ignore it. Never raises, whatever the shape."""
+    if not isinstance(event, dict) or event.get("event") != "message":
         return None, "not_a_message"
-    p = event.get("payload") or {}
-    chat_id, text = p.get("from") or "", (p.get("body") or "").strip()
-    if p.get("fromMe"):
+    p = event.get("payload")
+    if not isinstance(p, dict):
+        return None, "bad_payload"
+    chat_id, body = p.get("from"), p.get("body")
+    if not isinstance(chat_id, str) or not isinstance(body, str):
+        return None, "bad_payload"
+    text = body.strip()
+    if p.get("fromMe") is True:
         return None, "own_message"
     if not chat_id or not text:
         return None, "empty"
-    if chat_id.endswith("@broadcast") or chat_id == "status@broadcast":
+    if chat_id.endswith("@broadcast"):
         return None, "broadcast"
-    if seen.duplicate(p.get("id")):
+    message_id = p.get("id") if isinstance(p.get("id"), str) else None
+    if seen.duplicate(message_id):
         return None, "duplicate"
-    me_id = (event.get("me") or {}).get("id", "")
+    me = event.get("me")
+    me_id = me.get("id", "") if isinstance(me, dict) and isinstance(me.get("id", ""), str) else ""
     ctx = bot.store.get(chat_id)
     addressed = address(text, p, me_id, settings.bot_name, settings.group_mode, engaged=bool(ctx.session or ctx.pending))
     if addressed is None:
         return None, "group_not_addressed"
-    return Job(event.get("session", "default"), chat_id, p.get("participant") or chat_id, addressed, p.get("id")), ""
+    participant = p.get("participant") if isinstance(p.get("participant"), str) else None
+    session = event.get("session") if isinstance(event.get("session"), str) else "default"
+    return Job(session, chat_id, participant or chat_id, addressed, message_id), ""
 
 
 async def reply_for(chat_id: str, text: str) -> str:
@@ -119,13 +165,43 @@ async def process(job: Job) -> None:
                                "out_chars": len(reply) if reply else 0, "group": job.chat_id.endswith("@g.us")})
 
 
+async def read_body(request: Request, limit: int) -> bytes | None:
+    """The request body, or None if it is larger than `limit` (checked from the header first, then while streaming)."""
+    declared = request.headers.get("content-length")
+    if declared and declared.isdigit() and int(declared) > limit:
+        return None
+    chunks, size = [], 0
+    async for chunk in request.stream():
+        size += len(chunk)
+        if size > limit:
+            return None
+        chunks.append(chunk)
+    return b"".join(chunks)
+
+
 @app.post("/webhook")
 async def webhook(request: Request, background: BackgroundTasks):
-    job, reason = parse(await request.json())
-    if job:
-        background.add_task(process, job)                               # answer WAHA immediately: slow tools must not cause retries
-    else:
+    body = await read_body(request, settings.max_body_bytes)
+    if body is None:
+        return JSONResponse({"ok": False, "error": "request too large"}, status_code=413)
+    try:
+        event = json.loads(body)
+    except ValueError:
+        return JSONResponse({"ok": False, "error": "body is not valid JSON"}, status_code=400)
+    if not isinstance(event, dict):
+        return JSONResponse({"ok": False, "error": "expected a JSON object"}, status_code=400)
+    job, reason = parse(event)
+    if job is None:
         log.debug("ignored", extra={"reason": reason})
+        return {"ok": True}
+    if queue is None:                                                   # no worker pool (a bare test client): run after the response
+        background.add_task(process, job)
+        return {"ok": True}
+    try:
+        queue.put_nowait(job)                                           # answer WAHA immediately: slow tools must not cause retries
+    except asyncio.QueueFull:
+        log.warning("queue full: asking WAHA to retry", extra={"queued": queue.qsize()})
+        return JSONResponse({"ok": False, "error": "busy, retry"}, status_code=503)
     return {"ok": True}
 
 

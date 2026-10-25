@@ -45,22 +45,76 @@ class Clock:
 
 
 # --- 0.1 acknowledge immediately, reply in the background ---------------------------------------------------------------
-async def test_webhook_returns_before_a_slow_tool_finishes(sent, monkeypatch):
+def test_webhook_returns_before_a_slow_tool_finishes(sent, monkeypatch):
     async def slow(chat_id, text):
         await asyncio.sleep(0.3)
         return "slow answer"
     monkeypatch.setattr(main, "reply_for", slow)
+    with TestClient(main.app) as c:                                     # the context manager runs the lifespan: the worker pool is up
+        start = time.perf_counter()
+        assert c.post("/webhook", json=event("anything")).json() == {"ok": True}
+        assert time.perf_counter() - start < 0.15 and sent == []        # WAHA already has its answer; the reply is still pending
+    assert sent == [("123@c.us", "slow answer")]                        # leaving the context drains the queue
 
-    class Req:
-        async def json(self):
-            return event("anything")
 
-    tasks = BackgroundTasks()
-    start = time.perf_counter()
-    assert await main.webhook(Req(), tasks) == {"ok": True}
-    assert time.perf_counter() - start < 0.1 and sent == []            # WAHA already has its answer; the reply is still pending
-    await tasks()
-    assert sent == [("123@c.us", "slow answer")]
+def test_without_a_worker_pool_the_webhook_falls_back_to_background_tasks(sent):
+    assert main.queue is None                                           # the module-level client above does not run the lifespan
+    assert client.post("/webhook", json=event("ping")).json() == {"ok": True}
+    assert sent == [("123@c.us", "pong 🏓")]
+
+
+def test_the_worker_pool_handles_many_chats_at_once(sent, monkeypatch):
+    async def slow(chat_id, text):
+        await asyncio.sleep(0.2)
+        return f"done {text}"
+    monkeypatch.setattr(main, "reply_for", slow)
+    with TestClient(main.app) as c:
+        start = time.perf_counter()
+        for i in range(20):
+            c.post("/webhook", json=event(f"m{i}", chat=f"{i}@c.us", id=f"w{i}"))
+        acked = time.perf_counter() - start
+    assert acked < 0.5 and len(sent) == 20                              # 20 x 0.2 s of work was done concurrently, acknowledged instantly
+    assert sorted(t for _, t in sent) == sorted(f"done m{i}" for i in range(20))
+
+
+def test_messages_of_one_chat_keep_their_order_through_the_worker_pool(sent, monkeypatch):
+    async def reply(chat_id, text):
+        await asyncio.sleep(0.15 if text == "first" else 0)             # the first message is the slowest
+        return text
+    monkeypatch.setattr(main, "reply_for", reply)
+    with TestClient(main.app) as c:
+        for i, text in enumerate(("first", "second", "third")):
+            c.post("/webhook", json=event(text, id=f"o{i}"))
+    assert [t for _, t in sent] == ["first", "second", "third"]
+
+
+def test_a_full_queue_asks_waha_to_retry(sent, monkeypatch):
+    async def slow(chat_id, text):
+        await asyncio.sleep(0.5)
+        return "ok"
+    monkeypatch.setattr(main, "reply_for", slow)
+    with TestClient(main.app) as c:
+        main.queue._maxsize = 2                                         # tiny queue; the workers are all busy with the first messages
+        codes = [c.post("/webhook", json=event("x", chat=f"{i}@c.us", id=f"q{i}")).status_code for i in range(80)]
+    assert 503 in codes and codes.count(200) >= 2 and set(codes) <= {200, 503}
+
+
+@pytest.mark.parametrize("kwargs, status", [
+    ({"content": b"not json"}, 400), ({"content": b""}, 400), ({"json": []}, 400), ({"json": "text"}, 400), ({"json": 42}, 400),
+    ({"content": b"x" * 200_000}, 413), ({"content": b'{"event": "message", "payload": "' + b"a" * 200_000 + b'"}'}, 413)])
+def test_malformed_requests_get_a_4xx_never_a_500(sent, kwargs, status):
+    assert client.post("/webhook", **kwargs).status_code == status
+    assert sent == []
+
+
+@pytest.mark.parametrize("body", [
+    {"event": "message"}, {"event": "message", "payload": None}, {"event": "message", "payload": []}, {"event": "message", "payload": "x"},
+    {"event": "message", "payload": {"from": 5, "body": 7}}, {"event": "message", "payload": {"from": "1@c.us", "body": ["a"]}},
+    {"event": "message", "payload": {"from": "1@c.us", "body": "ping", "id": 12345, "participant": 5, "fromMe": "yes"}, "me": "x", "session": 7},
+    {"event": ["message"]}, {"payload": {"from": "1@c.us", "body": "ping"}}, {}])
+def test_oddly_shaped_events_are_ignored_not_crashed_on(sent, body):
+    assert client.post("/webhook", json=body).status_code == 200
+    assert all(t == "pong 🏓" for _, t in sent) and len(sent) <= 1       # at worst the one well-formed-enough "ping" is answered
 
 
 def test_a_crashing_bot_does_not_break_the_webhook(sent, monkeypatch, caplog):

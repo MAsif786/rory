@@ -24,6 +24,9 @@ class Settings(BaseModel):
     chat_idle_ttl: float = Field(3600, gt=0)                # forget a chat's state after this many idle seconds
     max_chats: int = Field(10_000, ge=10)                   # hard cap on remembered chats (least recently used go first)
     max_message_chars: int = Field(1000, ge=10)             # longer messages get a polite refusal instead of being processed
+    max_body_bytes: int = Field(100_000, ge=1000)           # webhook request bodies above this are rejected (413) without being parsed
+    workers: int = Field(32, ge=1, le=1000)                 # messages processed at the same time (one per chat; chats run in parallel)
+    queue_size: int = Field(10_000, ge=1)                   # messages waiting for a worker; when full the webhook answers 503 and WAHA retries
     unmatched_path: str = "data/unmatched.jsonl"            # the improvement inbox: messages Rory could not handle ("" turns it off)
     unmatched_retention_days: float = Field(30, gt=0)       # entries older than this are pruned at startup
     log_json: bool = True                                   # one JSON object per log line (False: readable text for local dev)
