@@ -11,7 +11,7 @@ from app.core.schemas import Followup, Input, UserError
 from app.core.tool import Tool
 from app.format import num, tip
 
-tool = Tool("news", title="News", emoji="📰", description="Today's headlines, or news about any topic")
+tool = Tool("news", title="News", emoji="📰", description="Today's headlines, or news about any topic", synonyms={"tidings": "news"})
 
 MAX_ITEMS = 5
 MAX_BYTES = 1_000_000
@@ -138,7 +138,7 @@ OPEN_STORY = Followup(phrases=["{pick}", "open {pick}", "link {pick}", "link for
     "headlines", description="Today's top headlines (reply 1-5 for a link)", repeat="reuse",
     phrases=["news", "the news", "today's news", "todays news", "today news", "news today", "latest news", "the latest news", "top news",
              "top stories", "headlines", "top headlines", "today's headlines", "todays headlines", "headlines today", "what's the news",
-             "whats the news", "what's in the news", "any news", "breaking news", "news update", "give me the news", "show me the news", "tell me the news", "tell me the latest news", "show me the latest news",
+             "whats the news", "what's in the news", "any news", "any news today", "is there any news", "is there any news today", "got any news", "breaking news", "news update", "give me the news", "show me the news", "tell me the news", "tell me the latest news", "show me the latest news",
              "show me today's news", "tell me today's news", "what's happening in the world", "what is happening in the world",
              "what's happening today", "what's going on in the world", "what's going on today", "world news", "what are the headlines", "what are today's headlines",
              "khabrein", "khabar", "aaj ki khabrein", "taza khabrein", "mujhe khabrein batao", "khabrein batao"],

@@ -9,7 +9,7 @@ PLAIN = [
     ("i'm good", "greetings.mood"), ("i am tired", "greetings.mood"), ("all good", "greetings.mood"),
     ("did you know something about the moon", "fun.fact_about"), ("fun fact about octopuses", "fun.fact_about"), ("tell about moon", "wiki.lookup"),
     ("weather in lahore", "weather.current"), ("what's the weather in karachi", "weather.current"), ("is it raining in london", "weather.current"),
-    ("temperature in dubai", "weather.current"), ("forecast for tokyo", "weather.forecast"), ("weather next week in paris", "weather.forecast"),
+    ("temperature in dubai", "weather.current"), ("forecast for tokyo", "weather.forecast"), ("weather next week in paris", "weather.current"),
     ("will it rain in murree", "weather.forecast"), ("100 usd to pkr", "currency.convert"), ("convert 50 euros to dollars", "currency.convert"),
     ("how much is 20 gbp in pkr", "currency.convert"), ("usd to eur", "currency.convert"), ("5 km in miles", "units.convert"),
     ("convert 20 celsius to fahrenheit", "units.convert"), ("2 kg to lb", "units.convert"), ("25*8", "calc.calc"), ("what is 12 + 30", "calc.calc"),
@@ -54,7 +54,12 @@ WRAPPED = [
     ("show me the latest news", "news.headlines"), ("please tell me about volcanoes", "wiki.lookup"),
 ]
 
-PROMOTED = [   # were gaps; fixed by input canonicalisation (typo repair, de-elongation, politeness stripping) or new phrases
+PROMOTED = [   # promoted after the entity pre-pass (dates, spoken maths) and tool synonyms
+    ("will i need an umbrella next monday in karachi", "weather.forecast"), ("square root of 144", "calc.calc"), ("what's 15 times 4", "calc.calc"),
+    ("lahore ka mausam kaisa hai aaj", "weather.current"), ("kal ka mausam lahore", "weather.current"), ("weather tomorrow", "weather.current"),
+    ("what's fifteen plus four", "calc.calc"), ("what is twenty percent of fifty", "calc.percent"), ("tell me a jest", "fun.joke"),
+    ("any tidings today", "news.headlines"), ("farewell", "greetings.bye"), ("who is the writer of dune", "book.info"),
+    ("exchange 100 dollars to rupees", "currency.convert"), ("what's the climate in lahore", "weather.current"),   # were gaps; fixed by input canonicalisation (typo repair, de-elongation, politeness stripping) or new phrases
     ("wether in lahore", "weather.current"), ("whats the wether in karachi", "weather.current"), ("hii", "greetings.hello"), ("heyyy", "greetings.hello"),
     ("thank u", "greetings.thanks"), ("salaam alaikum", "greetings.salam"), ("flip coin please", "dice.flip"), ("news please", "news.headlines"),
     ("time in new york right now", "clock.time"), ("is it going to rain tomorrow in karachi", "weather.forecast"), ("how hot is it in dubai", "weather.current"),
@@ -92,22 +97,21 @@ CLARIFY = [
 # (text, expected feature, why it fails / what would fix it). Strict xfail: when one starts passing the suite goes red until you
 # move it into PLAIN/NOISY/WRAPPED, so the backlog never goes stale.
 GAPS = [
-    ("will i need an umbrella next monday in karachi", "weather.forecast", "only 'tomorrow' is listed; a date/day-of-week slot would cover all of them"),
     ("convert 100 dollars into rupees and euros", "currency.convert", "multiple quotes joined by 'and' (only commas are supported)"),
-    ("square root of 144", "calc.calc", "maths in words: needs a words->operator pass (square root, times, plus, divided by)"),
-    ("what's 15 times 4", "calc.calc", "maths in words"),
     ("who invented the telephone", "wiki.lookup", "open questions ('who invented/when was/how tall is'): needs a question-to-search fallback"),
     ("when was pakistan founded", "wiki.lookup", "open question"),
     ("how tall is mount everest", "wiki.lookup", "open question"),
     ("recommend a book like dune", "book.info", "recommendations are not a lookup: needs a different feature"),
     ("cricket scores", "news.about", "'<topic> scores' is not a news phrase; could be search.web"),
     ("bitcoin price", "search.web", "price/real-time queries have no tool (crypto/stocks tool)"),
-    ("lahore ka mausam kaisa hai aaj", "weather.current", "Roman Urdu with a trailing time word"),
-    ("kal ka mausam lahore", "weather.forecast", "Roman Urdu 'kal' (tomorrow)"),
 ]
 
 # --- argument extraction: the feature AND what was captured (case of names/URLs must survive) ---------------------------------
 ARGS = [
+    ("weather next monday in karachi", "weather.current", {"place": "karachi", "when": "next monday"}),
+    ("forecast for the weekend in dubai", "weather.forecast", {"place": "dubai", "when": "weekend"}),
+    ("weather tomorrow in Karachi", "weather.current", {"place": "Karachi", "when": "tomorrow"}),
+    ("what's fifteen plus four", "calc.calc", {"expr": "15 + 4"}), ("square root of 144", "calc.calc", {"expr": "sqrt(144)"}),
     ("tell about moon", "wiki.lookup", {"topic": "moon"}), ("did you know something about the moon", "fun.fact_about", {"topic": "the moon"}),
     ("i'm tired", "greetings.mood", {"mood": "tired"}),
     ("weather in Lahore", "weather.current", {"place": "Lahore"}), ("what's the weather in New York?", "weather.current", {"place": "New York"}),

@@ -6,9 +6,10 @@ import httpx
 from app.core.schemas import Followup, Input, UserError
 from app.core.tool import Tool
 
-tool = Tool("country", title="Countries", emoji="🌍", description="Facts about any country")
+tool = Tool("country", title="Countries", emoji="🌍", description="Facts about any country", synonyms={"nation": "country"})
 
-NAME = r"[^\d\n]{2,40}"
+# a country is one to four words and never starts like a list or a request ("list of jokes or" is not a country)
+NAME = r"(?!(?:list|any|some|all|my|your|more|best|top)\b)[A-Za-z'.-]+(?: (?:of |the |and |d')?[A-Za-z'.-]+){0,3}"
 
 
 @tool.feature(

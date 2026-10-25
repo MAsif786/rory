@@ -6,7 +6,7 @@ from datetime import datetime
 from app.core.schemas import Input
 from app.core.tool import Tool
 
-tool = Tool("greetings", title="Greetings", emoji="👋", description="Say hi, thanks or goodbye, or ask who I am")
+tool = Tool("greetings", title="Greetings", emoji="👋", description="Say hi, thanks or goodbye, or ask who I am", synonyms={"farewell": "bye", "gratitude": "thanks", "cheerio": "bye", "adieu": "goodbye", "adios": "goodbye", "sayonara": "goodbye", "hullo": "hello"})
 
 REPEAT_WINDOW = 600                       # seconds: greet again within this and Rory says "again"
 _last: dict[str, tuple[float, str]] = {}  # chat -> (when, which greeting) we last answered (in memory, like all chat context)

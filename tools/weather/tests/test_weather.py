@@ -19,7 +19,7 @@ API = {"current": {"weather_code": 1, "temperature_2m": 21.4, "apparent_temperat
 
 class FakeHttp:
     def __init__(self, fail=False):
-        self.fail, self.cities = fail, []
+        self.fail, self.cities, self.days = fail, [], []
 
     async def get(self, url, params):
         if self.fail:
@@ -28,6 +28,7 @@ class FakeHttp:
             self.cities.append(params["name"])
             body = {} if params["name"] == "nowhereville" else {"results": [PLACE]}
         else:
+            self.days.append(params["forecast_days"])
             body = API
         return SimpleNamespace(raise_for_status=lambda: None, json=lambda: body)
 
@@ -62,7 +63,7 @@ async def test_forecast_shows_rain_chance_and_handles_missing(bot):
 
 
 @pytest.mark.parametrize("text, title", [
-    ("is it raining in Karachi", "Lahore"), ("weather next week in Dubai", "5-day"), ("will it rain tomorrow in Murree", "5-day"),
+    ("is it raining in Karachi", "Lahore"), ("weather next week in Dubai", "7-day"), ("will it rain tomorrow in Murree", "(tomorrow)"),
     ("what's the weather in Paris?", "Lahore"), ("Dubai forecast", "5-day")])
 async def test_routing(bot, text, title):
     assert title in await bot.handle("c", text)
@@ -97,3 +98,39 @@ async def test_api_shape_change_fails_safely(bot, monkeypatch):
     monkeypatch.setitem(API, "current", {"weather_code": "oops"})
     out = await bot.handle("c", "weather in lahore")
     assert "Something went wrong" in out
+
+
+# --- dates: lifted out of the message by the entity pre-pass, answered for that day --------------------------------------------
+async def test_tomorrow_shows_that_day_in_detail(bot, http):
+    out = await bot.handle("c", "weather tomorrow in Karachi")
+    assert out.startswith("📅 *Monday 26 Oct* (tomorrow) — *Lahore, Pakistan*") and "Light rain" in out and "☔ 80% chance of rain" in out
+    assert http.cities == ["Karachi"] and "Then:" in out                     # "tomorrow in" never leaks into the place
+
+
+async def test_a_weekday_asks_the_api_for_enough_days(bot, http):
+    await bot.handle("c", "forecast for the weekend in Dubai")
+    await bot.handle("c", "weather in 3 days in Paris")
+    assert http.cities == ["Dubai", "Paris"] and all(d >= 4 for d in http.days)
+
+
+async def test_weather_tomorrow_without_a_place_asks_and_remembers_the_day(bot, http):
+    assert await bot.handle("c", "weather tomorrow") == "Which place?"
+    out = await bot.handle("c", "Multan")
+    assert "(tomorrow)" in out and http.cities == ["Multan"]
+
+
+async def test_and_tomorrow_followup_changes_only_the_day(bot, http):
+    await bot.handle("c", "weather in Lahore")
+    out = await bot.handle("c", "and tomorrow")
+    assert "(tomorrow)" in out and http.cities == ["Lahore", "Lahore"]
+    out = await bot.handle("c", "what about Karachi")                          # the place changes, the day is kept
+    assert "(tomorrow)" in out and http.cities[-1] == "Karachi"
+
+
+async def test_too_far_ahead_is_a_friendly_error(bot):
+    assert "up to 15 days ahead" in await bot.handle("c", "weather in 30 days in Paris")
+
+
+async def test_roman_urdu_tomorrow(bot, http):
+    assert "(tomorrow)" in await bot.handle("c", "kal ka mausam lahore")
+    assert http.cities == ["lahore"]

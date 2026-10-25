@@ -10,7 +10,7 @@ from app.core.tool import Tool
 
 from . import service as q
 
-tool = Tool("quran", title="Quran", emoji="📖", description="Verses, translations, search, recitation and tafsir")
+tool = Tool("quran", title="Quran", emoji="📖", description="Verses, translations, search, recitation and tafsir", synonyms={"koran": "quran", "quraan": "quran"})
 
 REF = r"\d{1,3}\s*[:.]\s*\d{1,3}(?:\s*-\s*\d{1,3})?"
 LANG = "(?:" + "|".join([*q.LANG_WORDS, *q.LANGS, "ar"]) + ")"

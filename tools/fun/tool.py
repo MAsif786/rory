@@ -6,7 +6,7 @@ from app.core.schemas import Input, UserError
 from app.core.tool import Tool
 from app.wikipedia import cut, page_url, summary
 
-tool = Tool("fun", title="Fun", emoji="😂", description="Jokes and fun facts")
+tool = Tool("fun", title="Fun", emoji="😂", description="Jokes and fun facts", synonyms={"gag": "joke", "jest": "joke", "jape": "joke", "pun": "joke"})
 
 
 @tool.feature(

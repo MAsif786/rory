@@ -2,7 +2,7 @@
 from app.core.schemas import Followup, Input, UserError
 from app.core.tool import Tool
 
-tool = Tool("currency", title="Currency", emoji="💱", description="Convert money between currencies")
+tool = Tool("currency", title="Currency", emoji="💱", description="Convert money between currencies", synonyms={"exchange": "convert"})
 
 NAMES = {"dollar": "USD", "dollars": "USD", "buck": "USD", "bucks": "USD", "euro": "EUR", "euros": "EUR", "pound": "GBP",
          "pounds": "GBP", "sterling": "GBP", "rupee": "PKR", "rupees": "PKR", "rs": "PKR", "riyal": "SAR", "riyals": "SAR",
